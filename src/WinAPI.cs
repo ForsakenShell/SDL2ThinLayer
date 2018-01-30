@@ -133,23 +133,23 @@ public static class WinAPI
         SW_SHOWNORMAL       = 1
     }
     
-    #region Internal 32/64 bit platform abstraction
+    #region Internal 32/64 bit WinAPI entry points
     
     // 32-bit platform calls
     [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
-    private static extern uint GetWindowLongPtr32( IntPtr handle, WindowLongIndex nIndex );
+    static extern uint GetWindowLongPtr32( IntPtr handle, WindowLongIndex nIndex );
     [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
-    private static extern uint SetWindowLongPtr32( IntPtr handle, WindowLongIndex nIndex, uint newLong );
+    static extern uint SetWindowLongPtr32( IntPtr handle, WindowLongIndex nIndex, uint newLong );
     
     // 64-bit platform calls
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
-    private static extern IntPtr GetWindowLongPtr64( IntPtr handle, WindowLongIndex nIndex );
+    static extern IntPtr GetWindowLongPtr64( IntPtr handle, WindowLongIndex nIndex );
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
-    private static extern IntPtr SetWindowLongPtr64( IntPtr handle, WindowLongIndex nIndex, IntPtr newLong );
+    static extern IntPtr SetWindowLongPtr64( IntPtr handle, WindowLongIndex nIndex, IntPtr newLong );
     
     #endregion
     
-    #region Public 32/64-bit Platform WinAPI
+    #region Public 32/64-bit Platform Abstraction
     
     public static uint GetWindowLongPtr( IntPtr handle, WindowLongIndex nIndex )
     {

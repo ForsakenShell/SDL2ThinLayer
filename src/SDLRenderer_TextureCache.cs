@@ -57,8 +57,8 @@ namespace SDL2ThinLayer
         }
         
         /// <summary>
-        /// Clears the texture cache which is used to copy SDL_Surfaces to temporary textures.  This will be called
-        /// automatically when SDLRender is disposed of and it is not necessary to call it directly.
+        /// Clears the texture cache which is used to copy SDL_Surfaces to temporary SDL_Textures.  This will be called
+        /// automatically when SDLRenderer is disposed of and it is not necessary to call it directly.
         /// </summary>
         public void ClearTextureCache()
         {

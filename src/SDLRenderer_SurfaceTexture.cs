@@ -56,7 +56,7 @@ namespace SDL2ThinLayer
             SDL.SDL_FreeSurface( ipSurface );
         }
         
-        unsafe public void DestroyTexture( IntPtr srcTexture )
+        public void DestroyTexture( IntPtr srcTexture )
         {
             SDL.SDL_DestroyTexture( srcTexture );
         }

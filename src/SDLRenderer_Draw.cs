@@ -74,7 +74,7 @@ namespace SDL2ThinLayer
         /// <summary>
         /// Blits an SDL_Surface to the SDL_Window by first converting it to an SDL_Texture.
         /// 
-        /// NOTE:  The resulting texture is stored in an internal cache, use MarkSurfaceDirty() after modifying an SDL_Surface between blits.
+        /// NOTE:  The resulting texture is stored in an internal cache, use RemoveSurfaceFromCache() after modifying an SDL_Surface between blits.
         /// NOTE 2:  The Dictionary access for the cache adds some overhead to the blit but less than the texture creation itself.  This provides a reasonable balance between code flexibility and speed.
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
@@ -88,7 +88,7 @@ namespace SDL2ThinLayer
         /// <summary>
         /// Blits an SDL_Surface to the SDL_Window by first converting it to an SDL_Texture.
         /// 
-        /// NOTE:  The resulting texture is stored in an internal cache, use MarkSurfaceDirty() after modifying an SDL_Surface between blits.
+        /// NOTE:  The resulting texture is stored in an internal cache, use RemoveSurfaceFromCache() after modifying an SDL_Surface between blits.
         /// NOTE 2:  The Dictionary access for the cache adds some overhead to the blit but less than the texture creation itself.  This provides a reasonable balance between code flexibility and speed.
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>

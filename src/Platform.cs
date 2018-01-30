@@ -11,12 +11,12 @@
 
 using System;
 
-/// <summary>
-/// Description of Platform.
-/// </summary>
 public static class Platform
 {
     
+    /// <summary>
+    /// Currently running on a 64-bit platform?
+    /// </summary>
     public static bool Is64Bit { get { return IntPtr.Size == 8; } }
     
 }

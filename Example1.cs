@@ -215,10 +215,10 @@ public class SDLRendererExampleForm : Form
         
         for( int i = 0; i < ITTERATIONS; i++ )
         {
-            var x1 = random.Next( gamePanel.Width );
-            var y1 = random.Next( gamePanel.Height );
-            var x2 = random.Next( gamePanel.Width );
-            var y2 = random.Next( gamePanel.Height );
+            var x1 = random.Next( SDL_WINDOW_WIDTH );
+            var y1 = random.Next( SDL_WINDOW_HEIGHT );
+            var x2 = random.Next( SDL_WINDOW_WIDTH );
+            var y2 = random.Next( SDL_WINDOW_HEIGHT );
             var c = Color.FromArgb(
                 random.Next( 256 ),
                 random.Next( 256 ),
@@ -240,8 +240,8 @@ public class SDLRendererExampleForm : Form
         rect.h = 64;
         for( int i = 0; i < ITTERATIONS; i++ )
         {
-            rect.x = random.Next( gamePanel.Width );
-            rect.y = random.Next( gamePanel.Height );
+            rect.x = random.Next( SDL_WINDOW_WIDTH );
+            rect.y = random.Next( SDL_WINDOW_HEIGHT );
             unsafe
             {
                 sdlRenderer.Blit( rect, sprite );
@@ -260,8 +260,8 @@ public class SDLRendererExampleForm : Form
         rect.h = 64;
         for( int i = 0; i < ITTERATIONS; i++ )
         {
-            rect.x = random.Next( gamePanel.Width );
-            rect.y = random.Next( gamePanel.Height );
+            rect.x = random.Next( SDL_WINDOW_WIDTH );
+            rect.y = random.Next( SDL_WINDOW_HEIGHT );
             sdlRenderer.Blit( rect, texture );
         }
     }

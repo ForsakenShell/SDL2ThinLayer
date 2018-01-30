@@ -150,9 +150,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Internal API
-        
-        #region Render construction and initialization
+        #region Renderer initialization
         
         // The actual constructor
         void INTERNAL_Init_Main(
@@ -178,7 +176,7 @@ namespace SDL2ThinLayer
             if( ( !_anchored )&&( windowClosed == null ) )
                 throw new ArgumentException( "windowClosed cannot be null!" );
             
-            // Assign the control objects the SDL window and renderer will attach to
+            // Assign the control objects the SDL_Window and SDL_Renderer will attach to
             _targetControl = targetControl;
             _parent = _anchored ? targetControl : mainForm;
             _parentHandle = _parent.Handle;
@@ -195,6 +193,7 @@ namespace SDL2ThinLayer
             
             // Clear SDLThread Performance Feedback variables
             _actualFPS = 0;
+            _potentialFPS = 0;
             _averageFrameTime = 0;
             
             // Set initial API state
@@ -215,7 +214,7 @@ namespace SDL2ThinLayer
             if( !_sdlInitialized )
                 throw new Exception( string.Format( "Unable to initialize SDL!\n\n{0}", SDL.SDL_GetError() ) );
             
-            // Now start the SDLThread to handle this renderer
+            // Now start the "SDLThread" to handle this renderer
             var threadInitOk = INTERNAL_Init_SDLThread();
             if( !threadInitOk )
                 throw new Exception( string.Format( "Error in thread startup!\n\n{0}", SDL.SDL_GetError() ) );
@@ -228,11 +227,12 @@ namespace SDL2ThinLayer
             
             // Need to add the no parachute flag for debuggers so SDL will interact with them nicely
             // According to the wiki (http://wiki.libsdl.org/), this does nothing in SDL2 however,
-            // we'll do it anyway "just in case"
+            // we'll do it anyway "just in case".
             subsysFlags |= SDL.SDL_INIT_NOPARACHUTE;
             
             if( System.Diagnostics.Debugger.IsAttached )
             {
+                // ¡Windows es muy estúpido!
                 SDL.SDL_SetHint(
                     SDL.SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,
                     "1"
@@ -249,7 +249,8 @@ namespace SDL2ThinLayer
             // Create a thread for the object
             var sdlThread = new Thread( INTERNAL_SDLThread_Main );
             if( sdlThread == null )
-                throw new Exception( "Unable to create thread!" );
+                return false;
+                //throw new Exception( "Unable to create thread!" );
             
             // Start the thread for the object
             sdlThread.Start();
@@ -297,7 +298,7 @@ namespace SDL2ThinLayer
             _eventTicks = (long)( (double)TimeSpan.TicksPerSecond / _eventsPS );
             _baseFrameDelay = Math.Min( _drawTicks, _eventTicks );
             //Console.Write( string.Format(
-            //    "UpdateState_ThreadIntervals()\n\t_drawTicks={0}\n\t_eventTicks={1}\n\t_baseFrameDelay={2}\n",
+            //    "INTERNAL_UpdateState_ThreadIntervals()\n\t_drawTicks={0}\n\t_eventTicks={1}\n\t_baseFrameDelay={2}\n",
             //    _drawTicks,
             //    _eventTicks,
             //    _baseFrameDelay
@@ -325,8 +326,6 @@ namespace SDL2ThinLayer
                 SDL.SDL_SetRenderDrawColor( _sdlRenderer, value.R, value.G, value.B, value.A );
             }
         }
-        
-        #endregion
         
         #endregion
         

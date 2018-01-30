@@ -22,9 +22,6 @@ using Color = System.Drawing.Color;
 namespace SDL2ThinLayer
 {
     
-    /// <summary>
-    /// Description of RenderTransform.
-    /// </summary>
     public partial class SDLRenderer : IDisposable
     {
         

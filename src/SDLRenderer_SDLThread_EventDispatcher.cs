@@ -59,7 +59,7 @@ namespace SDL2ThinLayer
         
         void INTERNAL_SDLThread_EventDispatcher()  
         {
-            //Console.Write( "SDLThread_HandleEvents()\n" );
+            //Console.Write( "INTERNAL_SDLThread_EventDispatcher()\n" );
             
             #if DEBUG
             if( !IsReady ) return;
@@ -73,7 +73,7 @@ namespace SDL2ThinLayer
                 {
                     case SDL.SDL_EventType.SDL_QUIT:
                     {
-                        // Nothing else matter after a quit event, just return
+                        // Nothing else matters after a quit event, just return
                         _exitRequested = true;
                         return;
                     }
@@ -136,7 +136,7 @@ namespace SDL2ThinLayer
                                     _mainForm.BeginInvoke( WindowClosed, p );
                                 }
                                 
-                                // Nothing else matter after a window close event, just return
+                                // Nothing else matters after a window close event, just return
                                 return;
                             }
                         }

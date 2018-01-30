@@ -163,12 +163,12 @@ namespace SDL2ThinLayer
         
         #region Thread-private functions
         
-        // All code here should be running in it's own thread created in InitSDLThread()
+        // All code here should be running in it's own thread created in INTERNAL_Init_SDLThread()
         // and should never be called outside of the thread itself.
         
         void INTERNAL_SDLThread_Main()
         {
-            //Console.Write( "SDLThread_Main()\n" );
+            //Console.Write( "INTERNAL_SDLThread_Main()\n" );
             
             _threadState = SDLThreadState.Starting;
             
@@ -195,7 +195,7 @@ namespace SDL2ThinLayer
         
         void INTERNAL_SDLThread_MainLoop()
         {
-            //Console.Write( "SDLThread_MainLoop()\n" );
+            //Console.Write( "INTERNAL_SDLThread_MainLoop()\n" );
             
             TimeSpan loopTime = TimeSpan.FromTicks( 0 );
             long loopStartTick = 0;
@@ -291,7 +291,7 @@ namespace SDL2ThinLayer
         
         void INTERNAL_SDLThread_RenderScene()
         {
-            //Console.Write( "SDLThread_RenderScene()\n" );
+            //Console.Write( "INTERNAL_SDLThread_RenderScene()\n" );
             
             #if DEBUG
             if( !IsReady ) return;
@@ -307,7 +307,7 @@ namespace SDL2ThinLayer
         
         void INTERNAL_SDLThread_Cleanup( SDLThreadState newState )
         {
-            //Console.Write( "SDLThread_Cleanup()\n" );
+            //Console.Write( "INTERNAL_SDLThread_Cleanup()\n" );
             
             // Dispose of the renderer, window, etc
             
@@ -326,7 +326,7 @@ namespace SDL2ThinLayer
         
         bool INTERNAL_SDLThread_InitWindowAndRenderer()
         {
-            //Console.Write( "SDLThread_InitWindowAndRenderer()\n" );
+            //Console.Write( "INTERNAL_SDLThread_InitWindowAndRenderer()\n" );
             
             // Create the SDL window
             _sdlWindow = SDL.SDL_CreateWindow(
@@ -396,10 +396,8 @@ namespace SDL2ThinLayer
                 WinAPI.SetWindowPos(
                     sdlWindowHandle,
                     _mainFormHandle,
-                    0,
-                    0,
-                    0,
-                    0,
+                    0, 0,
+                    0, 0,
                     WinAPI.WindowSWPFlags.SWP_NOSIZE | WinAPI.WindowSWPFlags.SWP_SHOWWINDOW
                 );
                 
@@ -419,6 +417,7 @@ namespace SDL2ThinLayer
             // ShowWindow to force all the changes and present the SDL_Window
             WinAPI.ShowWindow( sdlWindowHandle, WinAPI.ShowWindowFlags.SW_SHOWNORMAL );
             
+            // SDL_Window and SDL_Renderer are ready for use
             return true;
         }
         
