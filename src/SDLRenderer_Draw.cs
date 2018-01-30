@@ -97,7 +97,7 @@ namespace SDL2ThinLayer
         public unsafe void Blit( SDL.SDL_Rect dstRect, SDL.SDL_Surface* srcSurface, SDL.SDL_Rect srcRect )
         {
             var sTex = TextureFromCache( srcSurface );
-            SDL.SDL_RenderCopy( _sdlRenderer, sTex, ref srcRect, ref dstRect  );
+            Blit( dstRect, sTex, srcRect );
         }
         
         /// <summary>
@@ -113,7 +113,7 @@ namespace SDL2ThinLayer
         public unsafe void Blit( SDL.SDL_Rect dstRect, SDL.SDL_Surface* srcSurface, double angle )
         {
             var sTex = TextureFromCache( srcSurface );
-            SDL.SDL_RenderCopyEx( _sdlRenderer, sTex, IntPtr.Zero, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
+            Blit( dstRect, sTex, angle );
         }
         
         /// <summary>
@@ -130,7 +130,7 @@ namespace SDL2ThinLayer
         public unsafe void Blit( SDL.SDL_Rect dstRect, SDL.SDL_Surface* srcSurface, SDL.SDL_Rect srcRect, double angle )
         {
             var sTex = TextureFromCache( srcSurface );
-            SDL.SDL_RenderCopyEx( _sdlRenderer, sTex, ref srcRect, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
+            Blit( dstRect, sTex, srcRect, angle );
         }
         
         #endregion
@@ -144,6 +144,7 @@ namespace SDL2ThinLayer
         /// <param name="srcTexture">The SDL_Texture to render</param>
         public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture )
         {
+            if( srcTexture == IntPtr.Zero ) return;
             SDL.SDL_RenderCopy( _sdlRenderer, srcTexture, IntPtr.Zero, ref dstRect  );
         }
         
@@ -155,6 +156,7 @@ namespace SDL2ThinLayer
         /// <param name="srcRect">Region of the SDL_Texture to render from.</param>
         public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture, SDL.SDL_Rect srcRect )
         {
+            if( srcTexture == IntPtr.Zero ) return;
             SDL.SDL_RenderCopy( _sdlRenderer, srcTexture, ref srcRect, ref dstRect  );
         }
         
@@ -168,6 +170,7 @@ namespace SDL2ThinLayer
         /// <param name="angle">Angle in degrees to rotate the SDL_Texture.</param>
         public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture, double angle )
         {
+            if( srcTexture == IntPtr.Zero ) return;
             SDL.SDL_RenderCopyEx( _sdlRenderer, srcTexture, IntPtr.Zero, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
         }
         
@@ -182,6 +185,7 @@ namespace SDL2ThinLayer
         /// <param name="angle">Angle in degrees to rotate the SDL_Surface.</param>
         public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture, SDL.SDL_Rect srcRect, double angle )
         {
+            if( srcTexture == IntPtr.Zero ) return;
             SDL.SDL_RenderCopyEx( _sdlRenderer, srcTexture, ref srcRect, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
         }
         

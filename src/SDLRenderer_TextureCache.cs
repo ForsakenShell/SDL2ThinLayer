@@ -30,6 +30,9 @@ namespace SDL2ThinLayer
         
         unsafe IntPtr TextureFromCache( SDL.SDL_Surface* surface )
         {
+            if( surface == null )
+                return IntPtr.Zero;
+            
             if( _textureCache == null )
                 _textureCache = new Dictionary<int, IntPtr>();
             
@@ -79,6 +82,7 @@ namespace SDL2ThinLayer
         /// <param name="surface">SDL_Surface to remove from the cache.</param>
         unsafe public void RemoveSurfaceFromCache( SDL.SDL_Surface* surface )
         {
+            if( surface == null ) return;
             if( _textureCache == null ) return;
             
             IntPtr texture;

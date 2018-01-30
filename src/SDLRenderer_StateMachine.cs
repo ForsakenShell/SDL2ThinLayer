@@ -68,8 +68,11 @@ namespace SDL2ThinLayer
         
         #region State machine variables reflecting the public API
         
+        // Render controls
         Color _clearColor;
         bool _showCursor;
+        
+        // Performance feedback
         int _drawsPS;
         int _eventsPS;
         bool _fastRender;
@@ -241,19 +244,19 @@ namespace SDL2ThinLayer
             
             #endif
             
-            return SDL.SDL_Init( subsysFlags ) == 0 ? true : false;
+            return SDL.SDL_Init( subsysFlags ) == 0;
         }
         
         bool INTERNAL_Init_SDLThread()
         {
             // Create a thread for the object
-            var sdlThread = new Thread( INTERNAL_SDLThread_Main );
-            if( sdlThread == null )
+            _sdlThread = new Thread( INTERNAL_SDLThread_Main );
+            if( _sdlThread == null )
                 return false;
                 //throw new Exception( "Unable to create thread!" );
             
             // Start the thread for the object
-            sdlThread.Start();
+            _sdlThread.Start();
             
             // Wait for the thread to finish creating the state machine and start looping
             while( ( _threadState == SDLThreadState.Inactive )||( _threadState == SDLThreadState.Starting ) )

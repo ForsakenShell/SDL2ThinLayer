@@ -110,6 +110,25 @@ public class SDLRendererExampleForm : Form
         sdlRenderer.MouseMove += EventReporter;
         sdlRenderer.MouseWheel += EventReporter;
         
+        // Setting certain render states must be done from the SDL thread.
+        // To execute something in the SDL thread, use SDLRenderer.Invoke()
+        // or SDLRenderer.BeginInvoke() as appropriate.
+        //
+        // NOTE:  SDLRenderer.[Begin]Invoke() is not performing a standard
+        // Invoke().  What is happening is a user event is being pushed onto
+        // the SDL_Event queue to invoke the delegate.  This will cause the
+        // actual execution of the method to be delayed.  As a result Invoke()
+        // will block the calling thread until the event is handled.  If you
+        // want a non-blocking async invocation use SDLRenderer.BeginInvoke()
+        // instead.
+        sdlRenderer.Invoke( InitInThread );
+        
+        // Start the performance feedback timer (more example form stuff)
+        timer.Start();
+    }
+    
+    void InitInThread()
+    {
         // Set the render blender mode
         SDL.SDL_SetRenderDrawBlendMode( sdlRenderer.Renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND );
         
@@ -125,7 +144,7 @@ public class SDLRendererExampleForm : Form
             rect.w = 64;
             rect.h = 64;
             var ipSprite = new IntPtr( sprite );
-            SDL.SDL_FillRect( ipSprite, ref rect, 0x00FF00FF );
+            SDL.SDL_FillRect( ipSprite, ref rect, 0x007F007F );
             bool sToggle = false;
             bool toggle = false;
             rect.w = 8;
@@ -157,10 +176,8 @@ public class SDLRendererExampleForm : Form
             // No need to set the blend mode, etc - all rendering information is copied
             // directly in SDLRenderer.CreateTextureFromSurface() from the SDL_Surface settings.
             texture = sdlRenderer.CreateTextureFromSurface( sprite );
+            SDL.SDL_SetTextureBlendMode( texture, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND );
         }
-        
-        // Start the performance feedback timer (more example form stuff)
-        timer.Start();
     }
     
     void ShutdownRenderer()

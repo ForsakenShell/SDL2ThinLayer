@@ -35,6 +35,7 @@ namespace SDL2ThinLayer
         
         #region Thread level state machine variables
         
+        Thread _sdlThread;
         SDLThreadState _threadState;
         bool _exitRequested;
         
@@ -171,6 +172,20 @@ namespace SDL2ThinLayer
             //Console.Write( "INTERNAL_SDLThread_Main()\n" );
             
             _threadState = SDLThreadState.Starting;
+            
+            // Request some User Event IDs
+            _sdlUEID_Invoke_NoParams = SDL.SDL_RegisterEvents( 1 );
+            if( _sdlUEID_Invoke_NoParams == 0xFFFFFFFF )
+            {
+                INTERNAL_SDLThread_Cleanup( SDLThreadState.Error );
+                return;
+            }
+            _sdlUEID_BeginInvoke_NoParams = SDL.SDL_RegisterEvents( 1 );
+            if( _sdlUEID_BeginInvoke_NoParams == 0xFFFFFFFF )
+            {
+                INTERNAL_SDLThread_Cleanup( SDLThreadState.Error );
+                return;
+            }
             
             // Create the SDL window and renderer
             var wrStartedOk = INTERNAL_SDLThread_InitWindowAndRenderer();
@@ -321,6 +336,7 @@ namespace SDL2ThinLayer
             _sdlRenderer = IntPtr.Zero;
             _sdlWindow = IntPtr.Zero;
             
+            _sdlThread = null;
             _threadState = newState;
         }
         

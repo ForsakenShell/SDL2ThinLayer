@@ -105,6 +105,9 @@ namespace SDL2ThinLayer
             // Signal the event thread to stop
             _exitRequested = true;
             
+            // Disable all scenes
+            DrawScene = null;
+            
             // And wait for it to stop
             while( INTERNAL_SDLThread_Active )
                 Thread.Sleep( 0 );

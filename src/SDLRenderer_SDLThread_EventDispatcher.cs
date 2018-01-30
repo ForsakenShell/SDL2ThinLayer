@@ -25,6 +25,7 @@ namespace SDL2ThinLayer
         
         #region Client Delegate Prototypes
         
+        public delegate void Client_Delegate_Invoke();
         public delegate void Client_Delegate_DrawScene();
         public delegate void Client_Delegate_SDL_Event( SDL.SDL_Event e );
         public delegate void Client_Delegate_WindowClosed( SDLRenderer renderer );
@@ -51,25 +52,20 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region SDL control objects
-        
-        SDL.SDL_Event _sdlEvent;
-        
-        #endregion
-        
         void INTERNAL_SDLThread_EventDispatcher()  
         {
-            //Console.Write( "INTERNAL_SDLThread_EventDispatcher()\n" );
-            
             #if DEBUG
             if( !IsReady ) return;
             #endif
             
+            SDL.SDL_Event sdlEvent;
+            
             // TODO:  Add other relevant events!
             
-            while( SDL.SDL_PollEvent( out _sdlEvent ) != 0 )
+            while( ( SDL.SDL_PollEvent( out sdlEvent ) != 0 )&&( !_exitRequested ) )
             {
-                switch( _sdlEvent.type )
+                Console.WriteLine( string.Format( "INTERNAL_SDLThread_InvokeEvent : sdlEvent.type = 0x{0}", sdlEvent.type.ToString( "X" ) ) );
+                switch( sdlEvent.type )
                 {
                     case SDL.SDL_EventType.SDL_QUIT:
                     {
@@ -81,47 +77,47 @@ namespace SDL2ThinLayer
                     {
                         // Call user KeyDown handler
                         if( KeyDown != null )
-                            KeyDown( _sdlEvent );
+                            KeyDown( sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_KEYUP:
                     {
                         // Call user KeyUp handler
                         if( KeyUp != null )
-                            KeyUp( _sdlEvent );
+                            KeyUp( sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
                     {
                         // Call user MouseButtonDown handler
                         if( MouseButtonDown != null )
-                            MouseButtonDown( _sdlEvent );
+                            MouseButtonDown( sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
                     {
                         // Call user MouseButtonUp handler
                         if( MouseButtonUp != null )
-                            MouseButtonUp( _sdlEvent );
+                            MouseButtonUp( sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEMOTION:
                     {
                         // Call user MouseMove handler
                         if( MouseMove != null )
-                            MouseMove( _sdlEvent );
+                            MouseMove( sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEWHEEL:
                     {
                         // Call user MouseWheel handler
                         if( MouseWheel != null )
-                            MouseWheel( _sdlEvent );
+                            MouseWheel( sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_WINDOWEVENT:
                     {
-                        switch( _sdlEvent.window.windowEvent )
+                        switch( sdlEvent.window.windowEvent )
                         {
                             case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_CLOSE:
                             {
@@ -139,6 +135,19 @@ namespace SDL2ThinLayer
                                 // Nothing else matters after a window close event, just return
                                 return;
                             }
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        // User event?
+                        if(
+                            ( sdlEvent.type == (SDL.SDL_EventType)_sdlUEID_Invoke_NoParams )||
+                            ( sdlEvent.type == (SDL.SDL_EventType)_sdlUEID_BeginInvoke_NoParams )
+                        )
+                        {
+                            // Begin/Invoke Delegate
+                            INTERNAL_SDLThread_InvokeEvent( sdlEvent );
                         }
                         break;
                     }
