@@ -9,11 +9,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("SDL2 To Control Example")]
+[assembly: AssemblyTitle("SDL2ThinLayer Example")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("SDL2 To Control Example")]
+[assembly: AssemblyProduct("SDL2ThinLayer Example")]
 [assembly: AssemblyCopyright("unlicense")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
