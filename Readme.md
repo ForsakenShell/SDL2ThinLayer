@@ -4,7 +4,7 @@ by 1000101/ForsakenShell
 
 Simple overview:
 
-This is a threaded SDL library for anchoring the SDL_Window to a control or as a tool window on the window platform.
+This is a threaded SDL library for anchoring the SDL_Window to a control or as a tool window on the Windows platform.
 
 The thread SDL runs in should be the only thread that renders using SDL and can be done by registering for DrawScene events.
 
