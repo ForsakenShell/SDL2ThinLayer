@@ -27,6 +27,8 @@ namespace SDL2ThinLayer
         delegate void INTERNAL_Delegate_DrawLines( SDL.SDL_Point[] points, int count, Color c );
         delegate void INTERNAL_Delegate_DrawRect( SDL.SDL_Rect rect, Color c );
         delegate void INTERNAL_Delegate_DrawRects( SDL.SDL_Rect[] rects, int count, Color c );
+        delegate void INTERNAL_Delegate_DrawFilledRect( SDL.SDL_Rect rect, Color c );
+        delegate void INTERNAL_Delegate_DrawFilledRects( SDL.SDL_Rect[] rects, int count, Color c );
         
         #endregion
         
@@ -36,6 +38,8 @@ namespace SDL2ThinLayer
         INTERNAL_Delegate_DrawLines DelFunc_DrawLines;
         INTERNAL_Delegate_DrawRect DelFunc_DrawRect;
         INTERNAL_Delegate_DrawRects DelFunc_DrawRects;
+        INTERNAL_Delegate_DrawRect DelFunc_DrawFilledRect;
+        INTERNAL_Delegate_DrawRects DelFunc_DrawFilledRects;
         
         
         #region Public Render Primitives
@@ -65,128 +69,130 @@ namespace SDL2ThinLayer
             DelFunc_DrawRects( rects, count, c );
         }
         
+        public void DrawFilledRect( SDL.SDL_Rect rect, Color c )
+        {
+            DelFunc_DrawFilledRect( rect, c );
+        }
+        
+        public void DrawFilledRects( SDL.SDL_Rect[] rects, int count, Color c )
+        {
+            DelFunc_DrawFilledRects( rects, count, c );
+        }
+        
         #endregion
         
         #region Public Blitters
         
-        #region SDL_Surface Blitters
+        #region Surface Blitters
         
         /// <summary>
-        /// Blits an SDL_Surface to the SDL_Window by first converting it to an SDL_Texture.
+        /// Blits a Surface to the SDL_Window.
         /// 
-        /// NOTE:  The resulting texture is stored in an internal cache, use RemoveSurfaceFromCache() after modifying an SDL_Surface between blits.
-        /// NOTE 2:  The Dictionary access for the cache adds some overhead to the blit but less than the texture creation itself.  This provides a reasonable balance between code flexibility and speed.
+        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcSurface">The SDL_Surface to render</param>
-        public unsafe void Blit( SDL.SDL_Rect dstRect, SDL.SDL_Surface* srcSurface )
+        /// <param name="surface">The Surface to render</param>
+        public void Blit( SDL.SDL_Rect dstRect, Surface surface )
         {
-            var sTex = TextureFromCache( srcSurface );
-            SDL.SDL_RenderCopy( _sdlRenderer, sTex, IntPtr.Zero, ref dstRect  );
+            Blit( dstRect, surface.Texture );
         }
         
         /// <summary>
-        /// Blits an SDL_Surface to the SDL_Window by first converting it to an SDL_Texture.
+        /// Blits a Surface to the SDL_Window.
         /// 
-        /// NOTE:  The resulting texture is stored in an internal cache, use RemoveSurfaceFromCache() after modifying an SDL_Surface between blits.
-        /// NOTE 2:  The Dictionary access for the cache adds some overhead to the blit but less than the texture creation itself.  This provides a reasonable balance between code flexibility and speed.
+        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcSurface">The SDL_Surface to render</param>
-        /// <param name="srcRect">Region of the SDL_Surface to render from.</param>
-        public unsafe void Blit( SDL.SDL_Rect dstRect, SDL.SDL_Surface* srcSurface, SDL.SDL_Rect srcRect )
+        /// <param name="surface">The Surface to render</param>
+        /// <param name="srcRect">Region of the Surface to render from.</param>
+        public void Blit( SDL.SDL_Rect dstRect, Surface surface, SDL.SDL_Rect srcRect )
         {
-            var sTex = TextureFromCache( srcSurface );
-            Blit( dstRect, sTex, srcRect );
+            Blit( dstRect, surface.Texture, srcRect );
         }
         
         /// <summary>
-        /// Blits an SDL_Surface to the SDL_Window by first converting it to an SDL_Texture.
+        /// Blits a Surface to the SDL_Window.
         /// 
-        /// NOTE:  The resulting texture is stored in an internal cache, use MarkSurfaceDirty() after modifying an SDL_Surface between blits.
-        /// NOTE 2:  The Dictionary access for the cache adds some overhead to the blit but less than the texture creation itself.  This provides a reasonable balance between code flexibility and speed.
-        /// NOTE 3:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
+        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
+        /// NOTE 2:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcSurface">The SDL_Surface to render</param>
-        /// <param name="angle">Angle in degrees to rotate the SDL_Surface.</param>
-        public unsafe void Blit( SDL.SDL_Rect dstRect, SDL.SDL_Surface* srcSurface, double angle )
+        /// <param name="surface">The Surface to render</param>
+        /// <param name="angle">Angle in degrees to rotate the Surface.</param>
+        public void Blit( SDL.SDL_Rect dstRect, Surface surface, double angle )
         {
-            var sTex = TextureFromCache( srcSurface );
-            Blit( dstRect, sTex, angle );
+            Blit( dstRect, surface.Texture, angle );
         }
         
         /// <summary>
-        /// Blits an SDL_Surface to the SDL_Window by first converting it to an SDL_Texture.
+        /// Blits a Surface to the SDL_Window.
         /// 
-        /// NOTE:  The resulting texture is stored in an internal cache, use MarkSurfaceDirty() after modifying an SDL_Surface between blits.
-        /// NOTE 2:  The Dictionary access for the cache adds some overhead to the blit but less than the texture creation itself.  This provides a reasonable balance between code flexibility and speed.
-        /// NOTE 3:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
+        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
+        /// NOTE 2:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcSurface">The SDL_Surface to render</param>
-        /// <param name="srcRect">Region of the SDL_Surface to render from.</param>
-        /// <param name="angle">Angle in degrees to rotate the SDL_Surface.</param>
-        public unsafe void Blit( SDL.SDL_Rect dstRect, SDL.SDL_Surface* srcSurface, SDL.SDL_Rect srcRect, double angle )
+        /// <param name="surface">The Surface to render</param>
+        /// <param name="srcRect">Region of the Surface to render from.</param>
+        /// <param name="angle">Angle in degrees to rotate the Surface.</param>
+        public void Blit( SDL.SDL_Rect dstRect, Surface surface, SDL.SDL_Rect srcRect, double angle )
         {
-            var sTex = TextureFromCache( srcSurface );
-            Blit( dstRect, sTex, srcRect, angle );
+            Blit( dstRect, surface.Texture, srcRect, angle );
         }
         
         #endregion
         
-        #region SDL_Texture Blitters
+        #region Texture Blitters
         
         /// <summary>
-        /// Blits an SDL_Texture to the SDL_Window.
+        /// Blits a Texture to the SDL_Window.
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcTexture">The SDL_Texture to render</param>
-        public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture )
+        /// <param name="texture">The exture to render</param>
+        public void Blit( SDL.SDL_Rect dstRect, Texture texture )
         {
-            if( srcTexture == IntPtr.Zero ) return;
-            SDL.SDL_RenderCopy( _sdlRenderer, srcTexture, IntPtr.Zero, ref dstRect  );
+            if( texture == null ) return;
+            SDL.SDL_RenderCopy( _sdlRenderer, texture.SDLTexture, IntPtr.Zero, ref dstRect  );
         }
         
         /// <summary>
-        /// Blits an SDL_Texture to the SDL_Window.
+        /// Blits a Texture to the SDL_Window.
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcTexture">The SDL_Texture to render</param>
-        /// <param name="srcRect">Region of the SDL_Texture to render from.</param>
-        public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture, SDL.SDL_Rect srcRect )
+        /// <param name="texture">The Texture to render</param>
+        /// <param name="srcRect">Region of the Texture to render from.</param>
+        public void Blit( SDL.SDL_Rect dstRect, Texture texture, SDL.SDL_Rect srcRect )
         {
-            if( srcTexture == IntPtr.Zero ) return;
-            SDL.SDL_RenderCopy( _sdlRenderer, srcTexture, ref srcRect, ref dstRect  );
+            if( texture == null ) return;
+            SDL.SDL_RenderCopy( _sdlRenderer, texture.SDLTexture, ref srcRect, ref dstRect  );
         }
         
         /// <summary>
-        /// Blits an SDL_Texture to the SDL_Window.
+        /// Blits a Texture to the SDL_Window.
         /// 
         /// NOTE:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcTexture">The SDL_Texture to render</param>
-        /// <param name="angle">Angle in degrees to rotate the SDL_Texture.</param>
-        public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture, double angle )
+        /// <param name="texture">The Texture to render</param>
+        /// <param name="angle">Angle in degrees to rotate the Texture.</param>
+        public void Blit( SDL.SDL_Rect dstRect, Texture texture, double angle )
         {
-            if( srcTexture == IntPtr.Zero ) return;
-            SDL.SDL_RenderCopyEx( _sdlRenderer, srcTexture, IntPtr.Zero, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
+            if( texture == null ) return;
+            SDL.SDL_RenderCopyEx( _sdlRenderer, texture.SDLTexture, IntPtr.Zero, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
         }
         
         /// <summary>
-        /// Blits an SDL_Texture to the SDL_Window.
+        /// Blits a Texture to the SDL_Window.
         /// 
         /// NOTE:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
         /// </summary>
         /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="srcTexture">The SDL_Texture to render</param>
-        /// <param name="srcRect">Region of the SDL_Texture to render from.</param>
-        /// <param name="angle">Angle in degrees to rotate the SDL_Surface.</param>
-        public void Blit( SDL.SDL_Rect dstRect, IntPtr srcTexture, SDL.SDL_Rect srcRect, double angle )
+        /// <param name="texture">The Texture to render</param>
+        /// <param name="srcRect">Region of the Texture to render from.</param>
+        /// <param name="angle">Angle in degrees to rotate the Surface.</param>
+        public void Blit( SDL.SDL_Rect dstRect, Texture texture, SDL.SDL_Rect srcRect, double angle )
         {
-            if( srcTexture == IntPtr.Zero ) return;
-            SDL.SDL_RenderCopyEx( _sdlRenderer, srcTexture, ref srcRect, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
+            if( texture == null ) return;
+            SDL.SDL_RenderCopyEx( _sdlRenderer, texture.SDLTexture, ref srcRect, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
         }
         
         #endregion
@@ -279,6 +285,40 @@ namespace SDL2ThinLayer
         {
             var oldColor = INTERNAL_RenderColor;
             INTERNAL_DelFunc_DrawRects_Fast( rects, count, c );
+            INTERNAL_RenderColor = oldColor;
+        }
+        
+        #endregion
+        
+        #region DrawFilledRect
+        
+        void INTERNAL_DelFunc_DrawFilledRect_Fast( SDL.SDL_Rect rect, Color c )
+        {
+            INTERNAL_RenderColor = c;
+            SDL.SDL_RenderFillRect( _sdlRenderer, ref rect );
+        }
+        
+        void INTERNAL_DelFunc_DrawFilledRect( SDL.SDL_Rect rect, Color c )
+        {
+            var oldColor = INTERNAL_RenderColor;
+            INTERNAL_DelFunc_DrawFilledRect_Fast( rect, c );
+            INTERNAL_RenderColor = oldColor;
+        }
+        
+        #endregion
+        
+        #region DrawFilledRects
+        
+        void INTERNAL_DelFunc_DrawFilledRects_Fast( SDL.SDL_Rect[] rects, int count, Color c )
+        {
+            INTERNAL_RenderColor = c;
+            SDL.SDL_RenderFillRects( _sdlRenderer, rects, count );
+        }
+        
+        void INTERNAL_DelFunc_DrawFilledRects( SDL.SDL_Rect[] rects, int count, Color c )
+        {
+            var oldColor = INTERNAL_RenderColor;
+            INTERNAL_DelFunc_DrawFilledRects_Fast( rects, count, c );
             INTERNAL_RenderColor = oldColor;
         }
         

@@ -48,8 +48,8 @@ public class SDLRendererExampleForm : Form
     #region Example control constants
     
     // SDL_Window Size
-    const int SDL_WINDOW_WIDTH = 640;
-    const int SDL_WINDOW_HEIGHT = 480;
+    public const int SDL_WINDOW_WIDTH = 640;
+    public const int SDL_WINDOW_HEIGHT = 480;
     
     // Number of whatevers to whatever each callback
     const int ITTERATIONS = 1000;
@@ -70,23 +70,25 @@ public class SDLRendererExampleForm : Form
     // the least complexity and most flexibility is probably best (hence Panel).
     Panel gamePanel;
     
-    // SDL_Surfaces are a deprecated technology and there are performance costs when using them with SDLRenderer
-    unsafe SDL.SDL_Surface* sprite;
+    // Surfaces are a deprecated technology and there are performance costs when using them with SDLRenderer
+    SDLRenderer.Surface surface;
     
-    // SDL_Textures are hardware based and are much faster.
-    IntPtr texture;
+    // Textures are hardware based and are much faster.
+    SDLRenderer.Texture texture;
     
     #endregion
     
-    #region Init/Denit SDLRenderer as well as create an example SDL_Surface and SDL_Texture
+    #region Init/Denit SDLRenderer as well as create an example Surface and Texture
     
     void SetupRenderer()
     {
         // Example form changes, ignore the next few lines
+        CalculateWindowSize();
         buttonInit.Text = "Denit";
         showLines = false;
-        showSprites = false;
+        showSurfaces = false;
         showTextures = false;
+        showSample1 = false;
         
         // Get anchoring from example form checkbox
         var anchor = checkAnchored.Checked;
@@ -127,90 +129,90 @@ public class SDLRendererExampleForm : Form
         timer.Start();
     }
     
-    void InitInThread()
+    void InitInThread( SDLRenderer renderer )
     {
         // Set the render blender mode
-        SDL.SDL_SetRenderDrawBlendMode( sdlRenderer.Renderer, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND );
+        renderer.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND;
         
-        // Create a simple SDL_Surface
+        // Create a simple Surface
         //
-        // NOTE:  SDL_Surfaces are deprecated and require the use of unsafe code blocks.
-        unsafe
+        // NOTE:  Surfaces are deprecated and require conversion to Textures before blitting.
+        surface = renderer.CreateSurface( 64, 64 );
+        var rect = new SDL.SDL_Rect();
+        rect.x = 0;
+        rect.y = 0;
+        rect.w = 64;
+        rect.h = 64;
+        
+        // No blending while we create the surface
+        surface.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_NONE;
+        
+        // Fill the surface with magenta (alpha 0) and then a white checkerboard pattern (alpha 255)
+        var c = Color.FromArgb( 0, 255, 0, 255 );
+        surface.DrawFilledRect( rect, c );
+        bool sToggle = false;
+        bool toggle = false;
+        rect.w = 8;
+        rect.h = 8;
+        c = Color.FromArgb( 255, 255, 255, 255 );
+        for( int y = 0; y < 64; y += 8 )
         {
-            sprite = sdlRenderer.CreateSurface( 64, 64 );
-            var rect = new SDL.SDL_Rect();
-            rect.x = 0;
-            rect.y = 0;
-            rect.w = 64;
-            rect.h = 64;
-            var ipSprite = new IntPtr( sprite );
-            SDL.SDL_FillRect( ipSprite, ref rect, 0x007F007F );
-            bool sToggle = false;
-            bool toggle = false;
-            rect.w = 8;
-            rect.h = 8;
-            for( int y = 0; y < 64; y += 8 )
+            toggle = sToggle;
+            for( int x = 0; x < 64; x += 8 )
             {
-                toggle = sToggle;
-                for( int x = 0; x < 64; x += 8 )
+                if( toggle )
                 {
-                    if( toggle )
-                    {
-                        rect.x = x;
-                        rect.y = y;
-                        SDL.SDL_FillRect( ipSprite, ref rect, 0xFFFFFFFF );
-                    }
-                    toggle = !toggle;
+                    rect.x = x;
+                    rect.y = y;
+                    surface.DrawFilledRect( rect, c );
                 }
-                sToggle = !sToggle;
+                toggle = !toggle;
             }
-            SDL.SDL_SetSurfaceBlendMode( ipSprite, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND );
+            sToggle = !sToggle;
         }
+        // Now set the blend mode for surface blitting
+        surface.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND;
         
-        // Create an SDL_Texture from the SDL_Surface.
+        // Create a Texture from the Surface.
         //
-        // NOTE:  SDL_Textures do not require unsafe code blocks but because we are
-        // creating one from an SDL_Surface we do.
-        unsafe
-        {
-            // No need to set the blend mode, etc - all rendering information is copied
-            // directly in SDLRenderer.CreateTextureFromSurface() from the SDL_Surface settings.
-            texture = sdlRenderer.CreateTextureFromSurface( sprite );
-            SDL.SDL_SetTextureBlendMode( texture, SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND );
-        }
+        // No need to set the blend mode, etc - all rendering information is copied
+        // directly in SDLRenderer.CreateTextureFromSurface() from the SDL_Surface settings.
+        texture = renderer.CreateTextureFromSurface( surface );
+        
     }
     
     void ShutdownRenderer()
     {
         // (I thought this was about SDLRenderer, not the example form!)
         // Example Form change state, ignore the next couple lines and the comment above
+        CalculateWindowSize( true );
         buttonInit.Text = "Init";
         timer.Stop();
         
-        unsafe
-        {
-            
-            // SDL_Surfaces are unmanaged so we need to explicitly destroy them
-            if( sprite != null )
-                sdlRenderer.DestroySurface( sprite );
-            sprite = null;
-        }
+        // Tell SDLRenderer to stop it's thread.  We do this so we don't destroy resources
+        // being used before destroying the renderer itself.
+        if( sdlRenderer != null )
+            sdlRenderer.DestroyWindow();
         
-        // SDL_Textures are unmanaged so we need to explicitly destroy them
-        if( texture != IntPtr.Zero )
-            sdlRenderer.DestroyTexture( texture );
-        texture = IntPtr.Zero;
+        // While it SDL2ThingLayer implements IDisposable in all it's classes and
+        // explicitly disposes of their resources in their destructors, I always
+        // like to clean up after myself (old habits).
         
-        // SDLRenderer has a thread and a mix of managed and unmanaged resources.
-        // SDLRenderer itself is managed and will be garbage collected, therefore
-        // releasing all of said resources in this process.
+        // Dispose of the Surface
+        if( surface != null )
+            sdlRenderer.DestroySurface( ref surface );
         
-        // While it implements IDisposable and it also explicitly disposes of it's resources
-        // in it's destructor, I always like to clean up after myself (old habits).
+        // Dispose of the Texture
+        if( texture != null )
+            sdlRenderer.DestroyTexture( ref texture );
+        
+        // Dispose of the Renderer
         if( sdlRenderer != null )
             sdlRenderer.Dispose();
         
         // This is all you really need to do though, GC will handle the rest
+        surface = null;
+        texture = null;
         sdlRenderer = null;
         
     }
@@ -224,8 +226,8 @@ public class SDLRendererExampleForm : Form
     // Access to global resources should use the appropriate safe-guards for a
     // multi-threaded envirionment.
     
-    // void SDLRenderer.Client_Delegate_DrawScene()
-    void DrawSomeLines()
+    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
+    void DrawSomeLines( SDLRenderer renderer )
     {
         // You don't really want to uncomment the next line...
         // Console.WriteLine( "DrawSomeLines : Event from SDLRenderer.DrawScene" );
@@ -242,12 +244,12 @@ public class SDLRendererExampleForm : Form
                 random.Next( 256 ),
                 random.Next( 256 )
             );
-            sdlRenderer.DrawLine( x1, y1, x2, y2, c );
+            renderer.DrawLine( x1, y1, x2, y2, c );
         }
     }
     
-    // void SDLRenderer.Client_Delegate_DrawScene()
-    void DrawSomeSprites()
+    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
+    void DrawSomeSurfaces( SDLRenderer renderer )
     {
         // You don't really want to uncomment the next line...
         // Console.WriteLine( "DrawSomeSprites : Event from SDLRenderer.DrawScene" );
@@ -261,13 +263,13 @@ public class SDLRendererExampleForm : Form
             rect.y = random.Next( SDL_WINDOW_HEIGHT );
             unsafe
             {
-                sdlRenderer.Blit( rect, sprite );
+                renderer.Blit( rect, surface );
             }
         }
     }
     
-    // void SDLRenderer.Client_Delegate_DrawScene()
-    void DrawSomeTextures()
+    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
+    void DrawSomeTextures( SDLRenderer renderer )
     {
         // You don't really want to uncomment the next line...
         // Console.WriteLine( "DrawSomeTextures : Event from SDLRenderer.DrawScene" );
@@ -279,12 +281,49 @@ public class SDLRendererExampleForm : Form
         {
             rect.x = random.Next( SDL_WINDOW_WIDTH );
             rect.y = random.Next( SDL_WINDOW_HEIGHT );
-            sdlRenderer.Blit( rect, texture );
+            renderer.Blit( rect, texture );
         }
     }
     
-    // void SDLRenderer.Client_Delegate_SDL_Event( SDL.SDL_Event e )
-    void EventReporter( SDL.SDL_Event e )
+    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
+    void DrawSample1( SDLRenderer renderer )
+    {
+        // You don't really want to uncomment the next line...
+        // Console.WriteLine( "DrawSample1 : Event from SDLRenderer.DrawScene" );
+        
+        // Draw a blue rect
+        var rect = new SDL.SDL_Rect();
+        rect.x = 32;
+        rect.y = 32;
+        rect.w = 64;
+        rect.h = 64;
+        var c = Color.FromArgb( 255, 0, 128, 128 );
+        renderer.DrawFilledRect( rect, c );
+        
+        // Draw a translucent red rect
+        rect.x += 32;
+        rect.y += 32;
+        c = Color.FromArgb( 128, 255, 0, 0 );
+        renderer.DrawFilledRect( rect, c );
+        
+        // Draw a couple translucent lines over the rects
+        var p1 = new SDL.SDL_Point();
+        p1.x = 32;
+        p1.y = 32;
+        var p2 = new SDL.SDL_Point();
+        p2.x = p1.x + 64;
+        p2.y = p1.y + 64;
+        c = Color.FromArgb( 128, 255, 255, 255 );
+        renderer.DrawLine( p1, p2, c );
+        p2.x = p1.x + 32;
+        p2.y = p1.y + 64;
+        p1.x += 64;
+        p1.y += 32;
+        renderer.DrawLine( p1, p2, c );
+    }
+    
+    // void SDLRenderer.Client_Delegate_SDL_Event( SDLRenderer renderer, SDL.SDL_Event e )
+    void EventReporter( SDLRenderer renderer, SDL.SDL_Event e )
     {
         var str = string.Format( "EventReporter : Event from SDLRenderer.EventDispatcher: 0x{0}", e.type.ToString( "X" ) );
         Console.WriteLine( str );
@@ -325,8 +364,14 @@ public class SDLRendererExampleForm : Form
     
     #region Example control constants
     
-    const int WINDOW_WIDTH = 800;
-    const int WINDOW_HEIGHT = 600;
+    // Literal constants suck, the layout is semi-dynamic by changing
+    // the values of these and the SDL_WINDOW named constants.
+    public const int WINDOW_TITLE = 24;
+    public const int WINDOW_PADDING = 13;
+    public const int CONTROL_PADDING = 6;
+    public const int CONTROL_WIDTH = 100;
+    public const int CONTROL_HEIGHT = 24;
+    public const int CONTROL_ELEMENTS = 6; // # of checkboxes, buttons, etc
     
     #endregion
     
@@ -337,13 +382,35 @@ public class SDLRendererExampleForm : Form
     CheckBox checkAnchored;
     Button buttonInit;
     Button buttonLines;
-    Button buttonSprites;
+    Button buttonSurfaces;
     Button buttonTextures;
+    Button buttonSample1;
     System.Timers.Timer timer;
     
     bool showLines = false;
-    bool showSprites = false;
+    bool showSurfaces = false;
     bool showTextures = false;
+    bool showSample1 = false;
+    
+    #endregion
+    
+    #region Calculcate and set Example Form size
+    
+    void CalculateWindowSize( bool forceSmall = false )
+    {
+        var wid = CONTROL_WIDTH + ( WINDOW_PADDING * 2 );
+        var hei = WINDOW_TITLE + ( CONTROL_HEIGHT * CONTROL_ELEMENTS ) + ( WINDOW_PADDING * 2 ) + ( CONTROL_PADDING * ( CONTROL_ELEMENTS - 1 ) );
+        if(
+            ( !forceSmall )&&
+            ( checkAnchored != null )&&
+            ( checkAnchored.Checked )
+        )
+        {
+            wid += CONTROL_PADDING + SDL_WINDOW_WIDTH;
+            hei = Math.Max( hei, ( WINDOW_TITLE + SDL_WINDOW_HEIGHT + ( WINDOW_PADDING * 2 ) ) );
+        }
+        Size = new Size( wid, hei );
+    }
     
     #endregion
     
@@ -352,59 +419,31 @@ public class SDLRendererExampleForm : Form
     public SDLRendererExampleForm()
     {
         // Make the WinForms window
-        Size = new Size( WINDOW_WIDTH, WINDOW_HEIGHT );
+        MaximizeBox = false;
+        MinimizeBox = false;
+        FormBorderStyle = FormBorderStyle.FixedSingle;
+        CalculateWindowSize();
         FormClosing += ExampleClosing;
         
         // This is what we're going to attach the SDL2 window to
         gamePanel = new Panel();
         gamePanel.Size = new Size( SDL_WINDOW_WIDTH, SDL_WINDOW_HEIGHT );
-        gamePanel.Location = new Point( 80, 10 );
+        gamePanel.Location = new Point( WINDOW_PADDING + CONTROL_WIDTH + CONTROL_PADDING, WINDOW_PADDING );
+        Controls.Add( gamePanel );
         
-        // Add some buttons
-        
-        // Init demo button and anchored checkbox
-        buttonInit = new Button();
-        buttonInit.Text = "Init";
-        buttonInit.Location = new Point(
-            10,
-            gamePanel.Location.Y + gamePanel.Size.Height + 10
-        );
-        buttonInit.Click += InitClicked;
-        
+        // Anchored checkbox
         checkAnchored = new CheckBox();
         checkAnchored.Text = "Anchor";
-        checkAnchored.Location = new Point(
-            buttonInit.Location.X,
-            buttonInit.Location.Y + buttonInit.Size.Height + 10
-        );
+        checkAnchored.CalculcateControlSizeAndLocation( 0 );
         checkAnchored.Checked = true;
+        Controls.Add( checkAnchored );
         
-        // Toggle lines
-        buttonLines = new Button();
-        buttonLines.Text = "Lines";
-        buttonLines.Location = new Point(
-            buttonInit.Location.X + buttonInit.Size.Width + 10,
-            buttonInit.Location.Y
-        );
-        buttonLines.Click += LinesClicked;
-        
-        // Toggle sprites
-        buttonSprites = new Button();
-        buttonSprites.Text = "Sprites";
-        buttonSprites.Location = new Point(
-            buttonLines.Location.X + buttonLines.Size.Width + 10,
-            buttonLines.Location.Y
-        );
-        buttonSprites.Click += SpritesClicked;
-        
-        // Toggle textures
-        buttonTextures = new Button();
-        buttonTextures.Text = "Textures";
-        buttonTextures.Location = new Point(
-            buttonSprites.Location.X + buttonSprites.Size.Width + 10,
-            buttonSprites.Location.Y
-        );
-        buttonTextures.Click += TexturesClicked;
+        // Add some buttons
+        buttonInit      = MakeButton( "Init"        , 1, InitClicked );
+        buttonLines     = MakeButton( "Lines"       , 2, LinesClicked );
+        buttonSurfaces  = MakeButton( "Surfaces"    , 3, SurfacesClicked );
+        buttonTextures  = MakeButton( "Textures"    , 4, TexturesClicked );
+        buttonSample1   = MakeButton( "Sample 1"    , 5, Sample1Clicked );
         
         // Add a performance feedback timer
         timer = new System.Timers.Timer();
@@ -412,13 +451,16 @@ public class SDLRendererExampleForm : Form
         timer.AutoReset = true;
         timer.Elapsed += TimerElapsed;
         
-        Controls.Add( gamePanel );
-        Controls.Add( buttonInit );
-        Controls.Add( checkAnchored );
-        Controls.Add( buttonLines );
-        Controls.Add( buttonSprites );
-        Controls.Add( buttonTextures );
-        
+    }
+    
+    Button MakeButton( string text, int position, EventHandler click )
+    {
+        var button = new Button();
+        button.Text = text;
+        button.CalculcateControlSizeAndLocation( position );
+        button.Click += click;
+        Controls.Add( button );
+        return button;
     }
     
     #endregion
@@ -442,14 +484,19 @@ public class SDLRendererExampleForm : Form
         ToggleOption( ref showLines, DrawSomeLines );
     }
     
-    void SpritesClicked( object sender, EventArgs e )
+    void SurfacesClicked( object sender, EventArgs e )
     {
-        ToggleOption( ref showSprites, DrawSomeSprites );
+        ToggleOption( ref showSurfaces, DrawSomeSurfaces );
     }
     
     void TexturesClicked( object sender, EventArgs e )
     {
         ToggleOption( ref showTextures, DrawSomeTextures );
+    }
+    
+    void Sample1Clicked( object sender, EventArgs e )
+    {
+        ToggleOption( ref showSample1, DrawSample1 );
     }
     
     void ToggleOption( ref bool bValue, SDLRenderer.Client_Delegate_DrawScene scene )
@@ -474,11 +521,12 @@ public class SDLRendererExampleForm : Form
         
         // Old habits again...
         gamePanel.Dispose();
+        checkAnchored.Dispose();
         buttonInit.Dispose();
         buttonLines.Dispose();
-        buttonSprites.Dispose();
+        buttonSurfaces.Dispose();
         buttonTextures.Dispose();
-        checkAnchored.Dispose();
+        buttonSample1.Dispose();
         timer.Dispose();
     }
     
@@ -496,4 +544,21 @@ public class SDLRendererExampleForm : Form
     
     #endregion
     
+}
+
+public static class ExampleHelper
+{
+    
+    public static void CalculcateControlSizeAndLocation<T>( this T control, int position ) where T: Control
+    {
+        var x = SDLRendererExampleForm.WINDOW_PADDING;
+        var y = SDLRendererExampleForm.WINDOW_PADDING + ( position * SDLRendererExampleForm.CONTROL_HEIGHT ) + ( position > 0 ? ( position * SDLRendererExampleForm.CONTROL_PADDING ) : 0 );
+        control.Location = new Point(
+            x,
+            y
+        );
+        control.Size = new Size( SDLRendererExampleForm.CONTROL_WIDTH, SDLRendererExampleForm.CONTROL_HEIGHT );
+    }
+    
+
 }

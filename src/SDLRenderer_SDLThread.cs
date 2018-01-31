@@ -315,7 +315,7 @@ namespace SDL2ThinLayer
             DelFunc_ClearScene();
             
             if( DrawScene != null )
-                DrawScene();
+                DrawScene( this );
             
             SDL.SDL_RenderPresent( _sdlRenderer );
         }
@@ -330,8 +330,6 @@ namespace SDL2ThinLayer
                 SDL.SDL_DestroyRenderer( _sdlRenderer );
             if( _sdlWindow != IntPtr.Zero )
                 SDL.SDL_DestroyWindow( _sdlWindow );
-            
-            ClearTextureCache();
             
             _sdlRenderer = IntPtr.Zero;
             _sdlWindow = IntPtr.Zero;

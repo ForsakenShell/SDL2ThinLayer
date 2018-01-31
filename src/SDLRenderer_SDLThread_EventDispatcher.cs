@@ -25,9 +25,9 @@ namespace SDL2ThinLayer
         
         #region Client Delegate Prototypes
         
-        public delegate void Client_Delegate_Invoke();
-        public delegate void Client_Delegate_DrawScene();
-        public delegate void Client_Delegate_SDL_Event( SDL.SDL_Event e );
+        public delegate void Client_Delegate_Invoke( SDLRenderer renderer );
+        public delegate void Client_Delegate_DrawScene( SDLRenderer renderer );
+        public delegate void Client_Delegate_SDL_Event( SDLRenderer renderer, SDL.SDL_Event e );
         public delegate void Client_Delegate_WindowClosed( SDLRenderer renderer );
         
         #endregion
@@ -64,7 +64,7 @@ namespace SDL2ThinLayer
             
             while( ( SDL.SDL_PollEvent( out sdlEvent ) != 0 )&&( !_exitRequested ) )
             {
-                Console.WriteLine( string.Format( "INTERNAL_SDLThread_InvokeEvent : sdlEvent.type = 0x{0}", sdlEvent.type.ToString( "X" ) ) );
+                //Console.WriteLine( string.Format( "INTERNAL_SDLThread_EventDispatcher : sdlEvent.type = 0x{0}", sdlEvent.type.ToString( "X" ) ) );
                 switch( sdlEvent.type )
                 {
                     case SDL.SDL_EventType.SDL_QUIT:
@@ -77,42 +77,42 @@ namespace SDL2ThinLayer
                     {
                         // Call user KeyDown handler
                         if( KeyDown != null )
-                            KeyDown( sdlEvent );
+                            KeyDown( this, sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_KEYUP:
                     {
                         // Call user KeyUp handler
                         if( KeyUp != null )
-                            KeyUp( sdlEvent );
+                            KeyUp( this, sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
                     {
                         // Call user MouseButtonDown handler
                         if( MouseButtonDown != null )
-                            MouseButtonDown( sdlEvent );
+                            MouseButtonDown( this, sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
                     {
                         // Call user MouseButtonUp handler
                         if( MouseButtonUp != null )
-                            MouseButtonUp( sdlEvent );
+                            MouseButtonUp( this, sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEMOTION:
                     {
                         // Call user MouseMove handler
                         if( MouseMove != null )
-                            MouseMove( sdlEvent );
+                            MouseMove( this, sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_MOUSEWHEEL:
                     {
                         // Call user MouseWheel handler
                         if( MouseWheel != null )
-                            MouseWheel( sdlEvent );
+                            MouseWheel( this, sdlEvent );
                         break;
                     }
                     case SDL.SDL_EventType.SDL_WINDOWEVENT:

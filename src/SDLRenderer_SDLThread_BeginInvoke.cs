@@ -150,9 +150,9 @@ namespace SDL2ThinLayer
             // Get the struct from the pointer
             var ueInfo = INTERNAL_SDLThread_PtrToInvokeStruct( sdlEvent.user.data1 );
             
-            // "Invoke" the delegate
+            // Invoke the delegate
             if( ueInfo.del != null )
-                ueInfo.del();
+                ueInfo.del( this );
             
             if( ueInfo.IsBlocking )
             {

@@ -97,6 +97,22 @@ namespace SDL2ThinLayer
             }
         }
         
+        public UInt32 PixelFormat
+        {
+            get
+            {
+                return _sdlWindow_PixelFormat;
+            }
+        }
+        
+        public int BitsPerPixel
+        {
+            get
+            {
+                return _sdlWindow_bpp;
+            }
+        }
+        
         #endregion
         
         #region State Machine Manipulation
@@ -148,6 +164,19 @@ namespace SDL2ThinLayer
             set
             {
                 _clearColor = value;
+            }
+        }
+        
+        public SDL.SDL_BlendMode BlendMode
+        {
+            get
+            {
+                SDL.SDL_BlendMode mode;
+                return SDL.SDL_GetRenderDrawBlendMode( _sdlRenderer, out mode ) != 0 ? SDL.SDL_BlendMode.SDL_BLENDMODE_INVALID : mode;
+            }
+            set
+            {
+                SDL.SDL_SetRenderDrawBlendMode( _sdlRenderer, value );
             }
         }
         
@@ -274,19 +303,23 @@ namespace SDL2ThinLayer
         {
             if( _fastRender )
             {
-                DelFunc_ClearScene  = INTERNAL_DelFunc_ClearScene_Fast;
-                DelFunc_DrawLine    = INTERNAL_DelFunc_DrawLine_Fast;
-                DelFunc_DrawLines   = INTERNAL_DelFunc_DrawLines_Fast;
-                DelFunc_DrawRect    = INTERNAL_DelFunc_DrawRect_Fast;
-                DelFunc_DrawRects   = INTERNAL_DelFunc_DrawRects_Fast;
+                DelFunc_ClearScene      = INTERNAL_DelFunc_ClearScene_Fast;
+                DelFunc_DrawLine        = INTERNAL_DelFunc_DrawLine_Fast;
+                DelFunc_DrawLines       = INTERNAL_DelFunc_DrawLines_Fast;
+                DelFunc_DrawRect        = INTERNAL_DelFunc_DrawRect_Fast;
+                DelFunc_DrawRects       = INTERNAL_DelFunc_DrawRects_Fast;
+                DelFunc_DrawFilledRect  = INTERNAL_DelFunc_DrawFilledRect_Fast;
+                DelFunc_DrawFilledRects = INTERNAL_DelFunc_DrawFilledRects_Fast;
             }
             else
             {
-                DelFunc_ClearScene  = INTERNAL_DelFunc_ClearScene;
-                DelFunc_DrawLine    = INTERNAL_DelFunc_DrawLine;
-                DelFunc_DrawLines   = INTERNAL_DelFunc_DrawLines;
-                DelFunc_DrawRect    = INTERNAL_DelFunc_DrawRect;
-                DelFunc_DrawRects   = INTERNAL_DelFunc_DrawRects;
+                DelFunc_ClearScene      = INTERNAL_DelFunc_ClearScene;
+                DelFunc_DrawLine        = INTERNAL_DelFunc_DrawLine;
+                DelFunc_DrawLines       = INTERNAL_DelFunc_DrawLines;
+                DelFunc_DrawRect        = INTERNAL_DelFunc_DrawRect;
+                DelFunc_DrawRects       = INTERNAL_DelFunc_DrawRects;
+                DelFunc_DrawFilledRect  = INTERNAL_DelFunc_DrawFilledRect;
+                DelFunc_DrawFilledRects = INTERNAL_DelFunc_DrawFilledRects;
             }
         }
         

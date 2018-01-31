@@ -89,18 +89,41 @@ namespace SDL2ThinLayer
         
         #region Destructor & IDispose
         
-        ~SDLRenderer()
-        {
-            this.Dispose();
-        }
-        
         // Protect against "double-free" errors caused by combinations of explicit disposal[s] and GC disposal
         bool _disposed = false;
         
+        ~SDLRenderer()
+        {
+            Dispose( false );
+        }
+        
         public void Dispose()
         {
+            Dispose( true );
+            GC.SuppressFinalize( this );
+        }
+        
+        protected virtual void Dispose( bool disposing )
+        {
             if( _disposed ) return;
+            
+            // Destroy the SDL_Window
+            DestroyWindow();
+            
+            // Shutdown SDL itself
+            if( _sdlInitialized )
+                SDL.SDL_Quit();
+            
+            // No longer a valid SDL state
+            _sdlInitialized = false;
+            
+            // This is no longer a valid state
             _disposed = true;
+        }
+        
+        public void DestroyWindow()
+        {
+            if( !INTERNAL_SDLThread_Active ) return;
             
             // Signal the event thread to stop
             _exitRequested = true;
@@ -112,12 +135,6 @@ namespace SDL2ThinLayer
             while( INTERNAL_SDLThread_Active )
                 Thread.Sleep( 0 );
             
-            // Shutdown SDL itself
-            if( _sdlInitialized )
-                SDL.SDL_Quit();
-            
-            // No longer a valid SDL state
-            _sdlInitialized = false;
         }
         
         #endregion
