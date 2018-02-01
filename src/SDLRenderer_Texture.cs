@@ -20,9 +20,11 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer : IDisposable
     {
         
+        #region Public API:  Create & Destroy SDLRenderer.Texture
+        
         public Texture CreateTextureFromSurface( Surface surface )
         {
-            return Texture.CreateTextureFromSurface( surface );
+            return Texture.FromSurface( surface );
         }
         
         public void DestroyTexture( ref Texture texture )
@@ -31,10 +33,38 @@ namespace SDL2ThinLayer
             texture = null;
         }
         
+        #endregion
+        
+        #region Public API:  SDLRenderer.Texture
+        
         public class Texture
         {
             
+            #region Semi-Public API:  The underlying SDL_Texture.
+            
             public IntPtr SDLTexture;
+            
+            #endregion
+            
+            #region Internal API:  Surface control objects
+            
+            SDLRenderer _renderer;
+            
+            #endregion
+            
+            #region Public API:  The SDLRenderer associated with this Texture.
+            
+            public SDLRenderer Renderer
+            {
+                get
+                {
+                    return _renderer;
+                }
+            }
+            
+            #endregion
+            
+            #region Semi-Public API:  Destructor & IDispose
             
             bool _disposed = false;
             
@@ -56,14 +86,20 @@ namespace SDL2ThinLayer
                 if( SDLTexture != IntPtr.Zero )
                     SDL.SDL_DestroyTexture( SDLTexture );
                 SDLTexture = IntPtr.Zero;
+                _renderer = null;
                 
                 _disposed = true;
             }
             
-            public static Texture CreateTextureFromSurface( Surface surface )
+            #endregion
+            
+            #region Public API:  Texture Creation
+            
+            public static Texture FromSurface( Surface surface )
             {
                 var texture = new Texture();
-                texture.SDLTexture = SDL.SDL_CreateTextureFromSurface( surface.Renderer.Renderer, surface.SDLSurface );
+                texture._renderer = surface.Renderer;
+                texture.SDLTexture = SDL.SDL_CreateTextureFromSurface( texture.Renderer.Renderer, surface.SDLSurface );
                 
                 // Copy SDL_Surface characteristics to the SDL_Texture
                 texture.BlendMode = surface.BlendMode;
@@ -73,6 +109,13 @@ namespace SDL2ThinLayer
                 return texture;
             }
             
+            #endregion
+            
+            #region Public API:  Texture Properties
+            
+            /// <summary>
+            /// Get/Set the Texture alpha blend mode.
+            /// </summary>
             public SDL.SDL_BlendMode BlendMode
             {
                 get
@@ -86,6 +129,9 @@ namespace SDL2ThinLayer
                 }
             }
             
+            /// <summary>
+            /// Get/Set the whole Texture alpha modulation.
+            /// </summary>
             public byte AlphaMod
             {
                 get
@@ -99,6 +145,9 @@ namespace SDL2ThinLayer
                 }
             }
             
+            /// <summary>
+            /// Get/Set the whole Texture color modulation.
+            /// </summary>
             public Color ColorMod
             {
                 get
@@ -113,7 +162,11 @@ namespace SDL2ThinLayer
                 }
             }
             
+            #endregion
+            
         }
+        
+        #endregion
         
     }
 }

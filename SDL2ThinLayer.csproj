@@ -57,9 +57,10 @@
     <Compile Include="src\SDL2-CS\SDL2_mixer.cs" />
     <Compile Include="src\SDL2-CS\SDL2_ttf.cs" />
     <Compile Include="src\SDLRenderer.cs" />
+    <Compile Include="src\SDLRenderer_Blitters.cs" />
     <Compile Include="src\SDLRenderer_SDLThread_BeginInvoke.cs" />
     <Compile Include="src\SDLRenderer_Surface.cs" />
-    <Compile Include="src\SDLRenderer_Draw.cs" />
+    <Compile Include="src\SDLRenderer_Primitives.cs" />
     <Compile Include="src\SDLRenderer_SDLThread.cs" />
     <Compile Include="src\SDLRenderer_StateMachine.cs" />
     <Compile Include="src\SDLRenderer_SDLThread_EventDispatcher.cs" />

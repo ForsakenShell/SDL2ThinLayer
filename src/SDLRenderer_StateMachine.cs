@@ -27,7 +27,7 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer : IDisposable
     {
         
-        #region Windows.Forms control objects
+        #region Internal:  Windows.Forms control objects
         
         bool _anchored;
         Control _parent;
@@ -45,7 +45,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region SDL control objects
+        #region Internal:  SDL control objects
         
         IntPtr _sdlWindow;
         UInt32 _sdlWindow_PixelFormat;
@@ -60,13 +60,13 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region State machine variables
+        #region Internal:  State machine state
         
         bool _sdlInitialized;
         
         #endregion
         
-        #region State machine variables reflecting the public API
+        #region Internal:  Public API state machine variables
         
         // Render controls
         Color _clearColor;
@@ -79,8 +79,11 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Direct access to SDL objects
+        #region Public API:  Direct access to SDL objects
         
+        /// <summary>
+        /// The SDL_Window associated with this renderer.
+        /// </summary>
         public IntPtr Window
         {
             get
@@ -89,6 +92,9 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// The SDL_Renderer associated with this renderer.
+        /// </summary>
         public IntPtr Renderer
         {
             get
@@ -97,6 +103,9 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// The SDL_PIXELFORMAT of the SDL_Window.
+        /// </summary>
         public UInt32 PixelFormat
         {
             get
@@ -105,6 +114,9 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// The number of Bits Per Pixel (bpp) of the SDL_Window.
+        /// </summary>
         public int BitsPerPixel
         {
             get
@@ -115,8 +127,11 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region State Machine Manipulation
+        #region Public API:  State Machine States
         
+        /// <summary>
+        /// Is this instance of SDLRenderer ready for use?
+        /// </summary>
         public bool IsReady
         {
             get
@@ -128,6 +143,9 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// Switch between using faster draw/blit methods without state preservation or slower state preserving draw/blit methods.
+        /// </summary>
         public bool PreserveUserState
         {
             get
@@ -141,6 +159,9 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// Toggle the mouse cursor on/off when over the SDL_Window.
+        /// </summary>
         public bool ShowCursor
         {
             get
@@ -155,6 +176,9 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// Get/Set the renderer clear color.
+        /// </summary>
         public Color ClearColor
         {
             get
@@ -167,6 +191,9 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// Get/Set the renderer alpha blend mode.
+        /// </summary>
         public SDL.SDL_BlendMode BlendMode
         {
             get
@@ -182,7 +209,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Renderer initialization
+        #region Internal:  Renderer initialization
         
         // The actual constructor
         void INTERNAL_Init_Main(
@@ -297,13 +324,15 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Internal State Machine Update
+        #region Internal:  State Machine states
         
         void INTERNAL_UpdateState_FunctionPointers()
         {
             if( _fastRender )
             {
                 DelFunc_ClearScene      = INTERNAL_DelFunc_ClearScene_Fast;
+                DelFunc_DrawPoint       = INTERNAL_DelFunc_DrawPoint_Fast;
+                DelFunc_DrawPoints      = INTERNAL_DelFunc_DrawPoints_Fast;
                 DelFunc_DrawLine        = INTERNAL_DelFunc_DrawLine_Fast;
                 DelFunc_DrawLines       = INTERNAL_DelFunc_DrawLines_Fast;
                 DelFunc_DrawRect        = INTERNAL_DelFunc_DrawRect_Fast;
@@ -314,6 +343,8 @@ namespace SDL2ThinLayer
             else
             {
                 DelFunc_ClearScene      = INTERNAL_DelFunc_ClearScene;
+                DelFunc_DrawPoint       = INTERNAL_DelFunc_DrawPoint;
+                DelFunc_DrawPoints      = INTERNAL_DelFunc_DrawPoints;
                 DelFunc_DrawLine        = INTERNAL_DelFunc_DrawLine;
                 DelFunc_DrawLines       = INTERNAL_DelFunc_DrawLines;
                 DelFunc_DrawRect        = INTERNAL_DelFunc_DrawRect;

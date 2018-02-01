@@ -20,9 +20,11 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer : IDisposable
     {
         
+        #region Public API:  Create & Destroy SDLRenderer.Surface
+        
         public Surface CreateSurface( int width, int height )
         {
-            return Surface.CreateSurfaceFromRenderer( this, width, height );
+            return Surface.FromRenderer( this, width, height );
         }
         
         public void DestroySurface( ref Surface surface )
@@ -31,19 +33,35 @@ namespace SDL2ThinLayer
             surface = null;
         }
         
+        #endregion
+        
+        #region Public API:  SDLRenderer.Surface
+        
         public class Surface : IDisposable
         {
+            
+            #region Semi-Public API:  The underlying SDL_Surface.
             
             public IntPtr SDLSurface;
             public unsafe SDL.SDL_Surface* SDLSurfacePtr;
             
+            #endregion
+            
+            #region Internal API:  Surface control objects
+            
             Texture _texture;
+            SDLRenderer _renderer;
+            
+            #endregion
+            
+            #region Public API:  Access to the cached Texture for the Surface.
+            
             public Texture Texture
             {
                 get
                 {
                     if( _texture == null )
-                        _texture = Texture.CreateTextureFromSurface( this );
+                        _texture = Texture.FromSurface( this );
                     return _texture;
                 }
             }
@@ -55,7 +73,10 @@ namespace SDL2ThinLayer
                 _texture = null;
             }
             
-            SDLRenderer _renderer;
+            #endregion
+            
+            #region Public API:  The SDLRenderer associated with this Surface.
+            
             public SDLRenderer Renderer
             {
                 get
@@ -63,6 +84,10 @@ namespace SDL2ThinLayer
                     return _renderer;
                 }
             }
+            
+            #endregion
+            
+            #region Semi-Public API:  Destructor & IDispose
             
             bool _disposed = false;
             
@@ -90,11 +115,16 @@ namespace SDL2ThinLayer
                 {
                     SDLSurfacePtr = null;
                 }
+                _renderer = null;
                 
                 _disposed = true;
             }
             
-            public static Surface CreateSurfaceFromRenderer( SDLRenderer renderer, int width, int height )
+            #endregion
+            
+            #region Public API:  Surface Creation
+            
+            public static Surface FromRenderer( SDLRenderer renderer, int width, int height )
             {
                 var surface = new Surface();
                 surface._renderer = renderer;
@@ -106,6 +136,13 @@ namespace SDL2ThinLayer
                 return surface;
             }
             
+            #endregion
+            
+            #region Public API:  Surface Properties
+            
+            /// <summary>
+            /// Get/Set the Surface alpha blend mode.
+            /// </summary>
             public SDL.SDL_BlendMode BlendMode
             {
                 get
@@ -119,6 +156,9 @@ namespace SDL2ThinLayer
                 }
             }
             
+            /// <summary>
+            /// Get/Set the whole Surface alpha modulation.
+            /// </summary>
             public byte AlphaMod
             {
                 get
@@ -132,6 +172,9 @@ namespace SDL2ThinLayer
                 }
             }
             
+            /// <summary>
+            /// Get/Set the whole Surface color modulation.
+            /// </summary>
             public Color ColorMod
             {
                 get
@@ -145,6 +188,10 @@ namespace SDL2ThinLayer
                     SDL.SDL_SetSurfaceColorMod( SDLSurface, value.R, value.G, value.B );
                 }
             }
+            
+            #endregion
+            
+            #region Public API:  Surface Drawing Primitives
             
             public void DrawFilledRect( SDL.SDL_Rect rect, Color c )
             {
@@ -162,7 +209,11 @@ namespace SDL2ThinLayer
                 }
             }
             
+            #endregion
+            
         }
+        
+        #endregion
         
     }
 }

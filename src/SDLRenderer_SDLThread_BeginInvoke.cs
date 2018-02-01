@@ -25,14 +25,14 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer
     {
         
-        #region Custom SDL User Event IDs
+        #region Internal:  Custom SDL User Event IDs
         
         uint _sdlUEID_Invoke_NoParams;
         uint _sdlUEID_BeginInvoke_NoParams;
         
         #endregion
         
-        #region Begin/Invoke structs passed as SDL_Event.user.data1
+        #region Internal:  Begin/Invoke structs passed as SDL_Event.user.data1
         
         struct UEInfo_Invoke_NoParams
         {
@@ -52,7 +52,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Public Invoke() and BeginInvoke()
+        #region Public API:  Invoke() and BeginInvoke()
         
         public void Invoke( Client_Delegate_Invoke del )
         {
@@ -66,7 +66,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Internal SDL Thread Begin/Invoke
+        #region Internal:  SDLRenderer Thread Begin/Invoke
         
         #region Push Event
         
@@ -120,7 +120,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Marshalling
+        #region Invoke Struct Marshalling
         
         UEInfo_Invoke_NoParams INTERNAL_SDLThread_PtrToInvokeStruct( IntPtr ueStruct )
         {
@@ -143,7 +143,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Begin/Invoke
+        #region Begin/Invoke Delegate Callback
         
         void INTERNAL_SDLThread_InvokeEvent( SDL.SDL_Event sdlEvent )
         {

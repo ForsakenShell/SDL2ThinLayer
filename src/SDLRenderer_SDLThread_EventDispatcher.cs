@@ -23,7 +23,7 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer : IDisposable
     {
         
-        #region Client Delegate Prototypes
+        #region Public API:  Client Delegate Prototypes
         
         public delegate void Client_Delegate_Invoke( SDLRenderer renderer );
         public delegate void Client_Delegate_DrawScene( SDLRenderer renderer );
@@ -32,7 +32,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Client Callbacks
+        #region Public API:  Client Callbacks
         
         // Actually used in INTERNAL_SDLThread_RenderScene() (see SDLRenderer_SDLThread.cs)
         public Client_Delegate_DrawScene DrawScene;
@@ -51,6 +51,8 @@ namespace SDL2ThinLayer
         Client_Delegate_WindowClosed WindowClosed;
         
         #endregion
+        
+        #region Internal:  SDLRender Thread Event Dispatcher
         
         void INTERNAL_SDLThread_EventDispatcher()  
         {
@@ -155,6 +157,8 @@ namespace SDL2ThinLayer
             }
             
         }
+        
+        #endregion
         
     }
 }

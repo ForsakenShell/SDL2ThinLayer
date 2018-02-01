@@ -1,7 +1,7 @@
 ﻿/*
- * SDLRenderer_Draw.cs
+ * SDLRenderer_Primitives.cs
  *
- * Public and internal methods for drawing primitives and blitting SDL_Surfaces and SDL_Textures.
+ * Public and internal methods for drawing primitives.
  *
  * User: 1000101
  * Date: 28/01/2018
@@ -20,11 +20,16 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer : IDisposable
     {
         
-        #region Internal Delegate Prototypes
+        #region Internal:  Rendering Delegate Prototypes
         
         delegate void INTERNAL_Delegate_ClearScene();
+        
+        delegate void INTERNAL_Delegate_DrawPoint( int x, int y, Color c );
+        delegate void INTERNAL_Delegate_DrawPoints( SDL.SDL_Point[] points, int count, Color c );
+        
         delegate void INTERNAL_Delegate_DrawLine( int x1, int y1, int x2, int y2, Color c );
         delegate void INTERNAL_Delegate_DrawLines( SDL.SDL_Point[] points, int count, Color c );
+        
         delegate void INTERNAL_Delegate_DrawRect( SDL.SDL_Rect rect, Color c );
         delegate void INTERNAL_Delegate_DrawRects( SDL.SDL_Rect[] rects, int count, Color c );
         delegate void INTERNAL_Delegate_DrawFilledRect( SDL.SDL_Rect rect, Color c );
@@ -32,17 +37,39 @@ namespace SDL2ThinLayer
         
         #endregion
         
+        #region Internal:  Rendering Function Pointers...I mean Method Delegates...
         
         INTERNAL_Delegate_ClearScene DelFunc_ClearScene;
+        
+        INTERNAL_Delegate_DrawPoint DelFunc_DrawPoint;
+        INTERNAL_Delegate_DrawPoints DelFunc_DrawPoints;
+        
         INTERNAL_Delegate_DrawLine DelFunc_DrawLine;
         INTERNAL_Delegate_DrawLines DelFunc_DrawLines;
+        
         INTERNAL_Delegate_DrawRect DelFunc_DrawRect;
         INTERNAL_Delegate_DrawRects DelFunc_DrawRects;
         INTERNAL_Delegate_DrawRect DelFunc_DrawFilledRect;
         INTERNAL_Delegate_DrawRects DelFunc_DrawFilledRects;
         
+        #endregion
         
-        #region Public Render Primitives
+        #region Public API:  Rendering Primitives
+        
+        public void DrawPoint( SDL.SDL_Point p, Color c )
+        {
+            DelFunc_DrawPoint( p.x, p.y, c );
+        }
+        
+        public void DrawPoint( int x, int y, Color c )
+        {
+            DelFunc_DrawPoint( x, y, c );
+        }
+        
+        public void DrawPoints( SDL.SDL_Point[] points, int count, Color c )
+        {
+            DelFunc_DrawPoints( points, count, c );
+        }
         
         public void DrawLine( SDL.SDL_Point p1, SDL.SDL_Point p2, Color c )
         {
@@ -81,125 +108,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Public Blitters
-        
-        #region Surface Blitters
-        
-        /// <summary>
-        /// Blits a Surface to the SDL_Window.
-        /// 
-        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="surface">The Surface to render</param>
-        public void Blit( SDL.SDL_Rect dstRect, Surface surface )
-        {
-            Blit( dstRect, surface.Texture );
-        }
-        
-        /// <summary>
-        /// Blits a Surface to the SDL_Window.
-        /// 
-        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="surface">The Surface to render</param>
-        /// <param name="srcRect">Region of the Surface to render from.</param>
-        public void Blit( SDL.SDL_Rect dstRect, Surface surface, SDL.SDL_Rect srcRect )
-        {
-            Blit( dstRect, surface.Texture, srcRect );
-        }
-        
-        /// <summary>
-        /// Blits a Surface to the SDL_Window.
-        /// 
-        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
-        /// NOTE 2:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="surface">The Surface to render</param>
-        /// <param name="angle">Angle in degrees to rotate the Surface.</param>
-        public void Blit( SDL.SDL_Rect dstRect, Surface surface, double angle )
-        {
-            Blit( dstRect, surface.Texture, angle );
-        }
-        
-        /// <summary>
-        /// Blits a Surface to the SDL_Window.
-        /// 
-        /// NOTE:  A Texture will be created from the Surface.  Use Surface.DeleteTexture() after modifying a Surface between blits.
-        /// NOTE 2:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="surface">The Surface to render</param>
-        /// <param name="srcRect">Region of the Surface to render from.</param>
-        /// <param name="angle">Angle in degrees to rotate the Surface.</param>
-        public void Blit( SDL.SDL_Rect dstRect, Surface surface, SDL.SDL_Rect srcRect, double angle )
-        {
-            Blit( dstRect, surface.Texture, srcRect, angle );
-        }
-        
-        #endregion
-        
-        #region Texture Blitters
-        
-        /// <summary>
-        /// Blits a Texture to the SDL_Window.
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="texture">The exture to render</param>
-        public void Blit( SDL.SDL_Rect dstRect, Texture texture )
-        {
-            if( texture == null ) return;
-            SDL.SDL_RenderCopy( _sdlRenderer, texture.SDLTexture, IntPtr.Zero, ref dstRect  );
-        }
-        
-        /// <summary>
-        /// Blits a Texture to the SDL_Window.
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="texture">The Texture to render</param>
-        /// <param name="srcRect">Region of the Texture to render from.</param>
-        public void Blit( SDL.SDL_Rect dstRect, Texture texture, SDL.SDL_Rect srcRect )
-        {
-            if( texture == null ) return;
-            SDL.SDL_RenderCopy( _sdlRenderer, texture.SDLTexture, ref srcRect, ref dstRect  );
-        }
-        
-        /// <summary>
-        /// Blits a Texture to the SDL_Window.
-        /// 
-        /// NOTE:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="texture">The Texture to render</param>
-        /// <param name="angle">Angle in degrees to rotate the Texture.</param>
-        public void Blit( SDL.SDL_Rect dstRect, Texture texture, double angle )
-        {
-            if( texture == null ) return;
-            SDL.SDL_RenderCopyEx( _sdlRenderer, texture.SDLTexture, IntPtr.Zero, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
-        }
-        
-        /// <summary>
-        /// Blits a Texture to the SDL_Window.
-        /// 
-        /// NOTE:  Rotation is clockwise as per SDL.SDL_RenderCopyEx().
-        /// </summary>
-        /// <param name="dstRect">Position and size on the SDL_Window to render to.</param>
-        /// <param name="texture">The Texture to render</param>
-        /// <param name="srcRect">Region of the Texture to render from.</param>
-        /// <param name="angle">Angle in degrees to rotate the Surface.</param>
-        public void Blit( SDL.SDL_Rect dstRect, Texture texture, SDL.SDL_Rect srcRect, double angle )
-        {
-            if( texture == null ) return;
-            SDL.SDL_RenderCopyEx( _sdlRenderer, texture.SDLTexture, ref srcRect, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
-        }
-        
-        #endregion
-        
-        #endregion
-        
-        #region Internal Render Primitives
+        #region Internal:  Rendering Primitives
         
         // These all come in two flavours:
         // A fast version and a version that preserves the SDL state machine
@@ -217,6 +126,40 @@ namespace SDL2ThinLayer
         {
             var oldColor = INTERNAL_RenderColor;
             INTERNAL_DelFunc_ClearScene_Fast();
+            INTERNAL_RenderColor = oldColor;
+        }
+        
+        #endregion
+        
+        #region DrawPoint
+        
+        void INTERNAL_DelFunc_DrawPoint_Fast( int x, int y, Color c )
+        {
+            INTERNAL_RenderColor = c;
+            SDL.SDL_RenderDrawPoint( _sdlRenderer, x, y );
+        }
+        
+        void INTERNAL_DelFunc_DrawPoint( int x, int y, Color c)
+        {
+            var oldColor = INTERNAL_RenderColor;
+            INTERNAL_DelFunc_DrawPoint_Fast( x, y, c);
+            INTERNAL_RenderColor = oldColor;
+        }
+        
+        #endregion
+        
+        #region DrawPoints
+        
+        void INTERNAL_DelFunc_DrawPoints_Fast( SDL.SDL_Point[] points, int count, Color c )
+        {
+            INTERNAL_RenderColor = c;
+            SDL.SDL_RenderDrawPoints( _sdlRenderer, points, count );
+        }
+        
+        void INTERNAL_DelFunc_DrawPoints( SDL.SDL_Point[] points, int count, Color c )
+        {
+            var oldColor = INTERNAL_RenderColor;
+            INTERNAL_DelFunc_DrawPoints_Fast( points, count, c);
             INTERNAL_RenderColor = oldColor;
         }
         

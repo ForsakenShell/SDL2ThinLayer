@@ -25,7 +25,7 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer : IDisposable
     {
         
-        #region Control constants
+        #region Public API:  Control constants
         
         public const int MAX_UPDATES_PER_SECOND = 240; // 240 FPS, do we need faster than that???
         public const int DEFAULT_DRAWS_PER_SECOND = 60;
@@ -33,7 +33,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Constructor
+        #region Public API:  SDLRenderer Constructors
         
         /// <summary>
         /// Creates a new anchored SDL_Window and SDL_Renderer.
@@ -87,7 +87,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Destructor & IDispose
+        #region Semi-Public API:  Destructor & IDispose
         
         // Protect against "double-free" errors caused by combinations of explicit disposal[s] and GC disposal
         bool _disposed = false;
@@ -120,6 +120,10 @@ namespace SDL2ThinLayer
             // This is no longer a valid state
             _disposed = true;
         }
+        
+        #endregion
+        
+        #region Public API:  DestroyWindow()
         
         public void DestroyWindow()
         {

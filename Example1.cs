@@ -194,7 +194,7 @@ public class SDLRendererExampleForm : Form
         if( sdlRenderer != null )
             sdlRenderer.DestroyWindow();
         
-        // While it SDL2ThingLayer implements IDisposable in all it's classes and
+        // While SDL2ThingLayer implements IDisposable in all it's classes and
         // explicitly disposes of their resources in their destructors, I always
         // like to clean up after myself (old habits).
         
@@ -226,6 +226,61 @@ public class SDLRendererExampleForm : Form
     // Access to global resources should use the appropriate safe-guards for a
     // multi-threaded envirionment.
     
+    #region Draw Scene Callbacks
+    
+    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
+    void DrawSomePoints( SDLRenderer renderer )
+    {
+        // You don't really want to uncomment the next line...
+        // Console.WriteLine( "DrawSomePoints : Event from SDLRenderer.DrawScene" );
+        
+        var c = Color.FromArgb(
+            random.Next( 256 ),
+            random.Next( 256 ),
+            random.Next( 256 ),
+            random.Next( 256 )
+        );
+        for( int y = 0; y < SDL_WINDOW_HEIGHT; y++ )
+        {
+            for( int x = 0; x < SDL_WINDOW_WIDTH; x++ )
+            {
+                renderer.DrawPoint( x, y, c );
+            }
+        }
+    }
+    
+    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
+    SDL.SDL_Point[] _screenMap;
+    void DrawSomePoints2( SDLRenderer renderer )
+    {
+        // You don't really want to uncomment the next line...
+        // Console.WriteLine( "DrawSomePoints2 : Event from SDLRenderer.DrawScene" );
+        const int TOTAL_PIX = SDL_WINDOW_HEIGHT * SDL_WINDOW_WIDTH;
+        
+        if( _screenMap == null )
+        {
+            _screenMap = new SDL.SDL_Point[ TOTAL_PIX ];
+            int index = 0;
+            for( int y = 0; y < SDL_WINDOW_HEIGHT; y++ )
+            {
+                for( int x = 0; x < SDL_WINDOW_WIDTH; x++ )
+                {
+                    _screenMap[ index ].x = x;
+                    _screenMap[ index ].y = y;
+                    index++;
+                }
+            }
+        }
+        
+        var c = Color.FromArgb(
+            random.Next( 256 ),
+            random.Next( 256 ),
+            random.Next( 256 ),
+            random.Next( 256 )
+        );
+        renderer.DrawPoints( _screenMap, TOTAL_PIX, c );
+    }
+    
     // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
     void DrawSomeLines( SDLRenderer renderer )
     {
@@ -252,7 +307,7 @@ public class SDLRendererExampleForm : Form
     void DrawSomeSurfaces( SDLRenderer renderer )
     {
         // You don't really want to uncomment the next line...
-        // Console.WriteLine( "DrawSomeSprites : Event from SDLRenderer.DrawScene" );
+        // Console.WriteLine( "DrawSomeSurfaces : Event from SDLRenderer.DrawScene" );
         
         var rect = new SDL.SDL_Rect();
         rect.w = 64;
@@ -322,12 +377,20 @@ public class SDLRendererExampleForm : Form
         renderer.DrawLine( p1, p2, c );
     }
     
+    #endregion
+    
+    #region User Input Events
+    
     // void SDLRenderer.Client_Delegate_SDL_Event( SDLRenderer renderer, SDL.SDL_Event e )
     void EventReporter( SDLRenderer renderer, SDL.SDL_Event e )
     {
         var str = string.Format( "EventReporter : Event from SDLRenderer.EventDispatcher: 0x{0}", e.type.ToString( "X" ) );
         Console.WriteLine( str );
     }
+    
+    #endregion
+    
+    #region SDL_Window Closed Event
     
     // void SDLRenderer.Client_Delegate_WindowClosed( SDLRenderer renderer );
     //
@@ -344,6 +407,8 @@ public class SDLRendererExampleForm : Form
         // User closed the SDL_Window
         ShutdownRenderer();
     }
+    
+    #endregion
     
     #endregion
     
@@ -371,7 +436,7 @@ public class SDLRendererExampleForm : Form
     public const int CONTROL_PADDING = 6;
     public const int CONTROL_WIDTH = 100;
     public const int CONTROL_HEIGHT = 24;
-    public const int CONTROL_ELEMENTS = 6; // # of checkboxes, buttons, etc
+    public const int CONTROL_ELEMENTS = 8; // # of checkboxes, buttons, etc
     
     #endregion
     
@@ -381,12 +446,16 @@ public class SDLRendererExampleForm : Form
     
     CheckBox checkAnchored;
     Button buttonInit;
+    Button buttonPoints;
+    Button buttonPoints2;
     Button buttonLines;
     Button buttonSurfaces;
     Button buttonTextures;
     Button buttonSample1;
     System.Timers.Timer timer;
     
+    bool showPoints = false;
+    bool showPoints2 = false;
     bool showLines = false;
     bool showSurfaces = false;
     bool showTextures = false;
@@ -440,10 +509,12 @@ public class SDLRendererExampleForm : Form
         
         // Add some buttons
         buttonInit      = MakeButton( "Init"        , 1, InitClicked );
-        buttonLines     = MakeButton( "Lines"       , 2, LinesClicked );
-        buttonSurfaces  = MakeButton( "Surfaces"    , 3, SurfacesClicked );
-        buttonTextures  = MakeButton( "Textures"    , 4, TexturesClicked );
-        buttonSample1   = MakeButton( "Sample 1"    , 5, Sample1Clicked );
+        buttonPoints    = MakeButton( "Points"      , 2, PointsClicked );
+        buttonPoints2   = MakeButton( "Points 2"    , 3, Points2Clicked );
+        buttonLines     = MakeButton( "Lines"       , 4, LinesClicked );
+        buttonSurfaces  = MakeButton( "Surfaces"    , 5, SurfacesClicked );
+        buttonTextures  = MakeButton( "Textures"    , 6, TexturesClicked );
+        buttonSample1   = MakeButton( "Sample 1"    , 7, Sample1Clicked );
         
         // Add a performance feedback timer
         timer = new System.Timers.Timer();
@@ -477,6 +548,16 @@ public class SDLRendererExampleForm : Form
         {
             ShutdownRenderer();
         }
+    }
+    
+    void PointsClicked( object sender, EventArgs e )
+    {
+        ToggleOption( ref showPoints, DrawSomePoints );
+    }
+    
+    void Points2Clicked( object sender, EventArgs e )
+    {
+        ToggleOption( ref showPoints2, DrawSomePoints2 );
     }
     
     void LinesClicked( object sender, EventArgs e )
@@ -523,6 +604,8 @@ public class SDLRendererExampleForm : Form
         gamePanel.Dispose();
         checkAnchored.Dispose();
         buttonInit.Dispose();
+        buttonPoints.Dispose();
+        buttonPoints2.Dispose();
         buttonLines.Dispose();
         buttonSurfaces.Dispose();
         buttonTextures.Dispose();
@@ -546,6 +629,9 @@ public class SDLRendererExampleForm : Form
     
 }
 
+
+#region Simple helper class for this example program
+
 public static class ExampleHelper
 {
     
@@ -560,5 +646,7 @@ public static class ExampleHelper
         control.Size = new Size( SDLRendererExampleForm.CONTROL_WIDTH, SDLRendererExampleForm.CONTROL_HEIGHT );
     }
     
-
 }
+
+#endregion
+

@@ -20,7 +20,7 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer : IDisposable
     {
         
-        #region Thread state enum
+        #region Internal:  Thread state enum
         
         enum SDLThreadState
         {
@@ -33,7 +33,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Thread level state machine variables
+        #region Internal:  Thread level state machine variables
         
         Thread _sdlThread;
         SDLThreadState _threadState;
@@ -46,7 +46,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Performance feedback variables
+        #region Internal:  Performance feedback variables
         
         int _actualFPS;
         int _potentialFPS; // Take this with a grain of salt
@@ -54,7 +54,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Update frequency
+        #region Public API:  SDLRenderer Thread Update frequency
         
         public int DrawsPerSecond
         {
@@ -88,7 +88,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Thread Safe Performance Feedback
+        #region Public API:  Performance Feedback Properties
         
         public int ActualFPS
         {
@@ -124,7 +124,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Thread-safe Thread Access
+        #region Internal:  Thread State
         
         // These are the only properties/functions that should be called outside of the SDLThread
         
@@ -162,7 +162,7 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Thread-private functions
+        #region Internal:  SDLRenderer Thread
         
         // All code here should be running in it's own thread created in INTERNAL_Init_SDLThread()
         // and should never be called outside of the thread itself.
