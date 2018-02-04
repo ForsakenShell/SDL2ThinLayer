@@ -9,6 +9,7 @@
  * 
  */
 using System;
+using System.Collections.Generic;
 
 using SDL2;
 
@@ -35,6 +36,8 @@ namespace SDL2ThinLayer
         delegate void INTERNAL_Delegate_DrawFilledRect( SDL.SDL_Rect rect, Color c );
         delegate void INTERNAL_Delegate_DrawFilledRects( SDL.SDL_Rect[] rects, int count, Color c );
         
+        delegate void INTERNAL_Delegate_DrawCircle( int x, int y, int r, Color c );
+        
         #endregion
         
         #region Internal:  Rendering Function Pointers...I mean Method Delegates...
@@ -52,9 +55,14 @@ namespace SDL2ThinLayer
         INTERNAL_Delegate_DrawRect DelFunc_DrawFilledRect;
         INTERNAL_Delegate_DrawRects DelFunc_DrawFilledRects;
         
+        INTERNAL_Delegate_DrawCircle DelFunc_DrawCircle;
+        INTERNAL_Delegate_DrawCircle DelFunc_DrawFilledCircle;
+        
         #endregion
         
         #region Public API:  Rendering Primitives
+        
+        #region Points
         
         public void DrawPoint( SDL.SDL_Point p, Color c )
         {
@@ -71,6 +79,10 @@ namespace SDL2ThinLayer
             DelFunc_DrawPoints( points, count, c );
         }
         
+        #endregion
+        
+        #region Lines
+        
         public void DrawLine( SDL.SDL_Point p1, SDL.SDL_Point p2, Color c )
         {
             DelFunc_DrawLine( p1.x, p1.y, p2.x, p2.y, c );
@@ -86,6 +98,16 @@ namespace SDL2ThinLayer
             DelFunc_DrawLines( points, count, c );
         }
         
+        #endregion
+        
+        #region Rects
+        
+        public void DrawRect( int x1, int y1, int x2, int y2, Color c )
+        {
+            var rect = new SDL.SDL_Rect( x1, y1, x2 - x1, y2 - y1 );
+            DelFunc_DrawRect( rect, c );
+        }
+        
         public void DrawRect( SDL.SDL_Rect rect, Color c )
         {
             DelFunc_DrawRect( rect, c );
@@ -94,6 +116,12 @@ namespace SDL2ThinLayer
         public void DrawRects( SDL.SDL_Rect[] rects, int count, Color c )
         {
             DelFunc_DrawRects( rects, count, c );
+        }
+        
+        public void DrawFilledRect( int x1, int y1, int x2, int y2, Color c )
+        {
+            var rect = new SDL.SDL_Rect( x1, y1, x2 - x1, y2 - y1 );
+            DelFunc_DrawFilledRect( rect, c );
         }
         
         public void DrawFilledRect( SDL.SDL_Rect rect, Color c )
@@ -105,6 +133,22 @@ namespace SDL2ThinLayer
         {
             DelFunc_DrawFilledRects( rects, count, c );
         }
+        
+        #endregion
+        
+        #region Circles
+        
+        public void DrawCircle( int x, int y, int r, Color c )
+        {
+            DelFunc_DrawCircle( x, y, r, c );
+        }
+        
+        public void DrawFilledCircle( int x, int y, int r, Color c )
+        {
+            DelFunc_DrawFilledCircle( x, y, r, c );
+        }
+        
+        #endregion
         
         #endregion
         
@@ -262,6 +306,162 @@ namespace SDL2ThinLayer
         {
             var oldColor = INTERNAL_RenderColor;
             INTERNAL_DelFunc_DrawFilledRects_Fast( rects, count, c );
+            INTERNAL_RenderColor = oldColor;
+        }
+        
+        #endregion
+        
+        #region DrawCircle
+        
+        void INTERNAL_DelFunc_DrawCircle_Fast( int x, int y, int r, Color c )
+        {
+            // Draw a circle by using the midpoint circle algorithm
+            // This algo only computes the first 45 degrees of a circle and mirrors all other points
+            
+            // Expected number of points on circumfrence
+            // Use standard 2*PI*r and then round up to the next '8'
+            var expected = ( 1 + ( (int)Math.Round( 2d * Math.PI * (double)r ) >> 3 ) ) << 3;
+            
+            // Actual number of points on circumfrence
+            int count = 0;
+            
+            // Allocate an array for the points
+            var points = new SDL.SDL_Point[ expected ];
+            
+            // Calculcate the points using circle midpoint
+            int offsetX = r - 1;
+            int offsetY = 0;
+            int deltaX = 1;
+            int deltaY = 1;
+            int r2 = r << 1;
+            int correction = deltaX - r2;
+            
+            while( offsetX >= offsetY )
+            {
+                #region Add points
+                
+                points[ count + 0 ] = new SDL.SDL_Point( x - offsetX, y + offsetY );
+                points[ count + 1 ] = new SDL.SDL_Point( x - offsetX, y - offsetY );
+                
+                points[ count + 2 ] = new SDL.SDL_Point( x - offsetY, y + offsetX );
+                points[ count + 3 ] = new SDL.SDL_Point( x - offsetY, y - offsetX );
+                
+                points[ count + 4 ] = new SDL.SDL_Point( x + offsetX, y + offsetY );
+                points[ count + 5 ] = new SDL.SDL_Point( x + offsetX, y - offsetY );
+                
+                points[ count + 6 ] = new SDL.SDL_Point( x + offsetY, y + offsetX );
+                points[ count + 7 ] = new SDL.SDL_Point( x + offsetY, y - offsetX );
+                
+                count += 8;
+                
+                #endregion
+                
+                if( correction <= 0 )
+                {
+                    offsetY++;
+                    correction += deltaY;
+                    deltaY += 2;
+                }
+                
+                if( correction > 0 )
+                {
+                    offsetX--;
+                    deltaX += 2;
+                    correction += deltaX - r2;
+                }
+            }
+            
+            INTERNAL_DelFunc_DrawPoints_Fast( points, count, c );
+        }
+        
+        void INTERNAL_DelFunc_DrawCircle( int x, int y, int r, Color c )
+        {
+            var oldColor = INTERNAL_RenderColor;
+            INTERNAL_DelFunc_DrawCircle_Fast( x, y, r, c );
+            INTERNAL_RenderColor = oldColor;
+        }
+        
+        #endregion
+        
+        #region DrawFIlledCircle
+        
+        void INTERNAL_DelFunc_DrawFilledCircle_Fast( int x, int y, int r, Color c )
+        {
+            // Draw a circle by using the midpoint circle algorithm
+            // This algo only computes the first 45 degrees of a circle and mirrors all other points
+            INTERNAL_RenderColor = c;
+            
+            // Was this line drawn?
+            // This is a "quick" way to make sure we don't redraw a scanline and thus fixing blending issues.
+            // However, it does introduce accuracy issues in the final circle if a smaller scanline is drawn first.
+            var lineWasDrawn = new bool[ r * 2 ];
+            
+            // Calculcate the points using circle midpoint
+            int offsetX = r - 1;
+            int offsetY = 0;
+            int deltaX = 1;
+            int deltaY = 1;
+            int r2 = r << 1;
+            int correction = deltaX - r2;
+            
+            while( offsetX >= offsetY )
+            {
+                #region Draw some lines for a filled circle
+                
+                if( !lineWasDrawn[ r - offsetY ] )
+                {
+                    SDL.SDL_RenderDrawLine( _sdlRenderer,
+                                           x - offsetX, y - offsetY,
+                                           x + offsetX, y - offsetY );
+                    lineWasDrawn[ r - offsetY ] = true;
+                }
+                
+                if( !lineWasDrawn[ r - offsetX ] )
+                {
+                    SDL.SDL_RenderDrawLine( _sdlRenderer,
+                                           x - offsetY, y - offsetX,
+                                           x + offsetY, y - offsetX );
+                    lineWasDrawn[ r - offsetX ] = true;
+                }
+                
+                if( !lineWasDrawn[ r + offsetY ] )
+                {
+                    SDL.SDL_RenderDrawLine( _sdlRenderer,
+                                           x - offsetX, y + offsetY,
+                                           x + offsetX, y + offsetY );
+                    lineWasDrawn[ r + offsetY ] = true;
+                }
+                
+                if( !lineWasDrawn[ r + offsetX ] )
+                {
+                    SDL.SDL_RenderDrawLine( _sdlRenderer,
+                                           x - offsetY, y + offsetX,
+                                           x + offsetY, y + offsetX );
+                    lineWasDrawn[ r + offsetX ] = true;
+                }
+                
+                #endregion
+                
+                if( correction <= 0 )
+                {
+                    offsetY++;
+                    correction += deltaY;
+                    deltaY += 2;
+                }
+                
+                if( correction > 0 )
+                {
+                    offsetX--;
+                    deltaX += 2;
+                    correction += deltaX - r2;
+                }
+            }
+        }
+        
+        void INTERNAL_DelFunc_DrawFilledCircle( int x, int y, int r, Color c )
+        {
+            var oldColor = INTERNAL_RenderColor;
+            INTERNAL_DelFunc_DrawFilledCircle_Fast( x, y, r, c );
             INTERNAL_RenderColor = oldColor;
         }
         

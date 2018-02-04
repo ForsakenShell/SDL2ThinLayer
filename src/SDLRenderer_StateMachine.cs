@@ -330,27 +330,31 @@ namespace SDL2ThinLayer
         {
             if( _fastRender )
             {
-                DelFunc_ClearScene      = INTERNAL_DelFunc_ClearScene_Fast;
-                DelFunc_DrawPoint       = INTERNAL_DelFunc_DrawPoint_Fast;
-                DelFunc_DrawPoints      = INTERNAL_DelFunc_DrawPoints_Fast;
-                DelFunc_DrawLine        = INTERNAL_DelFunc_DrawLine_Fast;
-                DelFunc_DrawLines       = INTERNAL_DelFunc_DrawLines_Fast;
-                DelFunc_DrawRect        = INTERNAL_DelFunc_DrawRect_Fast;
-                DelFunc_DrawRects       = INTERNAL_DelFunc_DrawRects_Fast;
-                DelFunc_DrawFilledRect  = INTERNAL_DelFunc_DrawFilledRect_Fast;
-                DelFunc_DrawFilledRects = INTERNAL_DelFunc_DrawFilledRects_Fast;
+                DelFunc_ClearScene          = INTERNAL_DelFunc_ClearScene_Fast;
+                DelFunc_DrawPoint           = INTERNAL_DelFunc_DrawPoint_Fast;
+                DelFunc_DrawPoints          = INTERNAL_DelFunc_DrawPoints_Fast;
+                DelFunc_DrawLine            = INTERNAL_DelFunc_DrawLine_Fast;
+                DelFunc_DrawLines           = INTERNAL_DelFunc_DrawLines_Fast;
+                DelFunc_DrawRect            = INTERNAL_DelFunc_DrawRect_Fast;
+                DelFunc_DrawRects           = INTERNAL_DelFunc_DrawRects_Fast;
+                DelFunc_DrawFilledRect      = INTERNAL_DelFunc_DrawFilledRect_Fast;
+                DelFunc_DrawFilledRects     = INTERNAL_DelFunc_DrawFilledRects_Fast;
+                DelFunc_DrawCircle          = INTERNAL_DelFunc_DrawCircle_Fast;
+                DelFunc_DrawFilledCircle    = INTERNAL_DelFunc_DrawFilledCircle_Fast;
             }
             else
             {
-                DelFunc_ClearScene      = INTERNAL_DelFunc_ClearScene;
-                DelFunc_DrawPoint       = INTERNAL_DelFunc_DrawPoint;
-                DelFunc_DrawPoints      = INTERNAL_DelFunc_DrawPoints;
-                DelFunc_DrawLine        = INTERNAL_DelFunc_DrawLine;
-                DelFunc_DrawLines       = INTERNAL_DelFunc_DrawLines;
-                DelFunc_DrawRect        = INTERNAL_DelFunc_DrawRect;
-                DelFunc_DrawRects       = INTERNAL_DelFunc_DrawRects;
-                DelFunc_DrawFilledRect  = INTERNAL_DelFunc_DrawFilledRect;
-                DelFunc_DrawFilledRects = INTERNAL_DelFunc_DrawFilledRects;
+                DelFunc_ClearScene          = INTERNAL_DelFunc_ClearScene;
+                DelFunc_DrawPoint           = INTERNAL_DelFunc_DrawPoint;
+                DelFunc_DrawPoints          = INTERNAL_DelFunc_DrawPoints;
+                DelFunc_DrawLine            = INTERNAL_DelFunc_DrawLine;
+                DelFunc_DrawLines           = INTERNAL_DelFunc_DrawLines;
+                DelFunc_DrawRect            = INTERNAL_DelFunc_DrawRect;
+                DelFunc_DrawRects           = INTERNAL_DelFunc_DrawRects;
+                DelFunc_DrawFilledRect      = INTERNAL_DelFunc_DrawFilledRect;
+                DelFunc_DrawFilledRects     = INTERNAL_DelFunc_DrawFilledRects;
+                DelFunc_DrawCircle          = INTERNAL_DelFunc_DrawCircle;
+                DelFunc_DrawFilledCircle    = INTERNAL_DelFunc_DrawFilledCircle;
             }
         }
         

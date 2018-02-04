@@ -2763,6 +2763,14 @@ namespace SDL2
 			public byte g;
 			public byte b;
 			public byte a;
+			
+			public SDL_Color( byte R, byte G, byte B, byte A )
+			{
+			    r = R;
+			    g = G;
+			    b = B;
+			    a = A;
+			}
 		}
 
 		[StructLayout(LayoutKind.Sequential)]
@@ -2916,6 +2924,12 @@ namespace SDL2
 		{
 			public int x;
 			public int y;
+			
+			public SDL_Point( int X, int Y )
+			{
+			    x = X;
+			    y = Y;
+			}
 		}
 
 		[StructLayout(LayoutKind.Sequential)]
@@ -2925,6 +2939,14 @@ namespace SDL2
 			public int y;
 			public int w;
 			public int h;
+			
+            public SDL_Rect( int X, int Y, int W, int H )
+            {
+                x = X;
+                y = Y;
+                w = W;
+                h = H;
+            }
 		}
 
 		/* Only available in 2.0.4 */

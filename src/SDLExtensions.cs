@@ -49,10 +49,9 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Point Add( this SDL.SDL_Point left, SDL.SDL_Point right )
         {
-            var r = new SDL.SDL_Point();
-            r.x = left.x + right.x;
-            r.y = left.y + right.y;
-            return r;
+            return new SDL.SDL_Point(
+                left.x + right.x,
+                left.y + right.y );
         }
         
         /// <summary>
@@ -60,10 +59,9 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Point Sub( this SDL.SDL_Point left, SDL.SDL_Point right )
         {
-            var r = new SDL.SDL_Point();
-            r.x = left.x - right.x;
-            r.y = left.y - right.y;
-            return r;
+            return new SDL.SDL_Point(
+                left.x - right.x,
+                left.y - right.y );
         }
         
         /// <summary>
@@ -71,10 +69,9 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Point Mul( this SDL.SDL_Point left, SDL.SDL_Point right )
         {
-            var r = new SDL.SDL_Point();
-            r.x = left.x * right.x;
-            r.y = left.y * right.y;
-            return r;
+            return new SDL.SDL_Point(
+                left.x * right.x,
+                left.y * right.y );
         }
         
         /// <summary>
@@ -82,10 +79,9 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Point Mul( this SDL.SDL_Point left, int right )
         {
-            var r = new SDL.SDL_Point();
-            r.x = left.x * right;
-            r.y = left.y * right;
-            return r;
+            return new SDL.SDL_Point(
+                left.x * right,
+                left.y * right );
         }
         
         /// <summary>
@@ -93,10 +89,9 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Point Div( this SDL.SDL_Point left, SDL.SDL_Point right )
         {
-            var r = new SDL.SDL_Point();
-            r.x = left.x / right.x;
-            r.y = left.y / right.y;
-            return r;
+            return new SDL.SDL_Point(
+                left.x / right.x,
+                left.y / right.y );
         }
         
         /// <summary>
@@ -104,10 +99,9 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Point Div( this SDL.SDL_Point left, int right )
         {
-            var r = new SDL.SDL_Point();
-            r.x = left.x / right;
-            r.y = left.y / right;
-            return r;
+            return new SDL.SDL_Point(
+                left.x / right,
+                left.y / right );
         }
         
         /// <summary>
@@ -153,10 +147,9 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Point ToSDLPoint( this Point left )
         {
-            var r = new SDL.SDL_Point();
-            r.x = left.X;
-            r.y = left.Y;
-            return r;
+            return new SDL.SDL_Point(
+                left.X,
+                left.Y );
         }
         
         #endregion
@@ -210,12 +203,11 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Rect ToSDLRect( this Rectangle left )
         {
-            var r = new SDL.SDL_Rect();
-            r.x = left.X;
-            r.y = left.Y;
-            r.w = left.Width;
-            r.h = left.Height;
-            return r;
+            return new SDL.SDL_Rect(
+                left.X,
+                left.Y,
+                left.Width,
+                left.Height );
         }
         
         #endregion
@@ -269,12 +261,11 @@ namespace SDL2ThinLayer
         /// </summary>
         public static SDL.SDL_Color ToSDLColor( this Color left )
         {
-            var r = new SDL.SDL_Color();
-            r.a = left.A;
-            r.r = left.R;
-            r.g = left.G;
-            r.b = left.B;
-            return r;
+            return new SDL.SDL_Color(
+                left.R,
+                left.G,
+                left.B,
+                left.A );
         }
         
         #endregion

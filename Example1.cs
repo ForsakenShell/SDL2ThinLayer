@@ -28,6 +28,8 @@
 #region Using Statements
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
 /* Bad awful Win32 Stuff */
 using System.Drawing;
@@ -70,11 +72,13 @@ public class SDLRendererExampleForm : Form
     // the least complexity and most flexibility is probably best (hence Panel).
     Panel gamePanel;
     
+    // NOTE:  The following does not need to be static other than the nature of this example code
+    
     // Surfaces are a deprecated technology and there are performance costs when using them with SDLRenderer
-    SDLRenderer.Surface surface;
+    static SDLRenderer.Surface surface;
     
     // Textures are hardware based and are much faster.
-    SDLRenderer.Texture texture;
+    static SDLRenderer.Texture texture;
     
     #endregion
     
@@ -85,10 +89,6 @@ public class SDLRendererExampleForm : Form
         // Example form changes, ignore the next few lines
         CalculateWindowSize();
         buttonInit.Text = "Denit";
-        showLines = false;
-        showSurfaces = false;
-        showTextures = false;
-        showSample1 = false;
         
         // Get anchoring from example form checkbox
         var anchor = checkAnchored.Checked;
@@ -103,6 +103,9 @@ public class SDLRendererExampleForm : Form
                                           SDL_WINDOW_WIDTH, SDL_WINDOW_HEIGHT,
                                           "SDL_Window as a tool window in it's own thread!",
                                           SDLWindowClosed );
+        
+        // Tell the examples the renderer to use
+        SDLExampleSet.UpdateRenderer( sdlRenderer );
         
         // Add some event callbacks, this example just reports the event ID to console
         sdlRenderer.KeyDown += EventReporter;
@@ -138,11 +141,7 @@ public class SDLRendererExampleForm : Form
         //
         // NOTE:  Surfaces are deprecated and require conversion to Textures before blitting.
         surface = renderer.CreateSurface( 64, 64 );
-        var rect = new SDL.SDL_Rect();
-        rect.x = 0;
-        rect.y = 0;
-        rect.w = 64;
-        rect.h = 64;
+        var rect = new SDL.SDL_Rect( 0, 0, 64, 64 );
         
         // No blending while we create the surface
         surface.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_NONE;
@@ -189,6 +188,9 @@ public class SDLRendererExampleForm : Form
         buttonInit.Text = "Init";
         timer.Stop();
         
+        // Tell the examples the renderer is invalid
+        SDLExampleSet.UpdateRenderer( null );
+        
         // Tell SDLRenderer to stop it's thread.  We do this so we don't destroy resources
         // being used before destroying the renderer itself.
         if( sdlRenderer != null )
@@ -221,45 +223,56 @@ public class SDLRendererExampleForm : Form
     
     #region Example SDLRenderer Events
     
-    // NOTE:  These callbacks will be run in the SDLRenderer thread unless otherwise noted.
+    #region Scene Renderers
+    
+    // NOTE:  These callbacks will be run in the SDLRenderer thread.
     //
     // Access to global resources should use the appropriate safe-guards for a
     // multi-threaded envirionment.
     
-    #region Draw Scene Callbacks
+    #region Example:  Draw Points
     
-    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
-    void DrawSomePoints( SDLRenderer renderer )
+    public class exDrawPoints : SDLExampleSceneRender
     {
-        // You don't really want to uncomment the next line...
-        // Console.WriteLine( "DrawSomePoints : Event from SDLRenderer.DrawScene" );
+        public exDrawPoints( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
         
-        var c = Color.FromArgb(
-            random.Next( 256 ),
-            random.Next( 256 ),
-            random.Next( 256 ),
-            random.Next( 256 )
-        );
-        for( int y = 0; y < SDL_WINDOW_HEIGHT; y++ )
+        public override void DrawScene( SDLRenderer renderer )
         {
-            for( int x = 0; x < SDL_WINDOW_WIDTH; x++ )
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawPoints.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            var c = Color.FromArgb(
+                random.Next( 256 ),
+                random.Next( 256 ),
+                random.Next( 256 ),
+                random.Next( 256 )
+            );
+            for( int y = 0; y < SDL_WINDOW_HEIGHT; y++ )
             {
-                renderer.DrawPoint( x, y, c );
+                for( int x = 0; x < SDL_WINDOW_WIDTH; x++ )
+                {
+                    renderer.DrawPoint( x, y, c );
+                }
             }
         }
     }
     
-    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
-    SDL.SDL_Point[] _screenMap;
-    void DrawSomePoints2( SDLRenderer renderer )
+    #endregion
+    
+    #region Example:  Draw Points 2
+    
+    public class exDrawPoints2 : SDLExampleSceneRender
     {
-        // You don't really want to uncomment the next line...
-        // Console.WriteLine( "DrawSomePoints2 : Event from SDLRenderer.DrawScene" );
         const int TOTAL_PIX = SDL_WINDOW_HEIGHT * SDL_WINDOW_WIDTH;
+        SDL.SDL_Point[] _screenMap = new SDL.SDL_Point[ TOTAL_PIX ];
         
-        if( _screenMap == null )
+        public exDrawPoints2( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut )
         {
-            _screenMap = new SDL.SDL_Point[ TOTAL_PIX ];
+            CreateScreenMap();
+        }
+        
+        void CreateScreenMap()
+        {
             int index = 0;
             for( int y = 0; y < SDL_WINDOW_HEIGHT; y++ )
             {
@@ -272,114 +285,270 @@ public class SDLRendererExampleForm : Form
             }
         }
         
-        var c = Color.FromArgb(
-            random.Next( 256 ),
-            random.Next( 256 ),
-            random.Next( 256 ),
-            random.Next( 256 )
-        );
-        renderer.DrawPoints( _screenMap, TOTAL_PIX, c );
-    }
-    
-    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
-    void DrawSomeLines( SDLRenderer renderer )
-    {
-        // You don't really want to uncomment the next line...
-        // Console.WriteLine( "DrawSomeLines : Event from SDLRenderer.DrawScene" );
-        
-        for( int i = 0; i < ITTERATIONS; i++ )
+        public override void DrawScene( SDLRenderer renderer )
         {
-            var x1 = random.Next( SDL_WINDOW_WIDTH );
-            var y1 = random.Next( SDL_WINDOW_HEIGHT );
-            var x2 = random.Next( SDL_WINDOW_WIDTH );
-            var y2 = random.Next( SDL_WINDOW_HEIGHT );
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawPoints2.DrawScene : Event from SDLRenderer.DrawScene" );
+            
             var c = Color.FromArgb(
                 random.Next( 256 ),
                 random.Next( 256 ),
                 random.Next( 256 ),
                 random.Next( 256 )
             );
-            renderer.DrawLine( x1, y1, x2, y2, c );
+            renderer.DrawPoints( _screenMap, TOTAL_PIX, c );
         }
     }
     
-    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
-    void DrawSomeSurfaces( SDLRenderer renderer )
+    #endregion
+    
+    #region Example:  Draw Lines
+    
+    public class exDrawLines : SDLExampleSceneRender
     {
-        // You don't really want to uncomment the next line...
-        // Console.WriteLine( "DrawSomeSurfaces : Event from SDLRenderer.DrawScene" );
+        public exDrawLines( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
         
-        var rect = new SDL.SDL_Rect();
-        rect.w = 64;
-        rect.h = 64;
-        for( int i = 0; i < ITTERATIONS; i++ )
+        public override void DrawScene( SDLRenderer renderer )
         {
-            rect.x = random.Next( SDL_WINDOW_WIDTH );
-            rect.y = random.Next( SDL_WINDOW_HEIGHT );
-            unsafe
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawLines.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            for( int i = 0; i < ITTERATIONS; i++ )
             {
+                var x1 = random.Next( SDL_WINDOW_WIDTH );
+                var y1 = random.Next( SDL_WINDOW_HEIGHT );
+                var x2 = random.Next( SDL_WINDOW_WIDTH );
+                var y2 = random.Next( SDL_WINDOW_HEIGHT );
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                renderer.DrawLine( x1, y1, x2, y2, c );
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Example:  Draw Rects
+    
+    public class exDrawRects : SDLExampleSceneRender
+    {
+        public exDrawRects( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawRects.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                var x1 = random.Next( SDL_WINDOW_WIDTH );
+                var y1 = random.Next( SDL_WINDOW_HEIGHT );
+                var x2 = random.Next( SDL_WINDOW_WIDTH );
+                var y2 = random.Next( SDL_WINDOW_HEIGHT );
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                renderer.DrawRect( x1, y1, x2, y2, c );
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Example:  Draw Filled Rects
+    
+    public class exDrawFilledRects : SDLExampleSceneRender
+    {
+        public exDrawFilledRects( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawFilledRects.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                var x1 = random.Next( SDL_WINDOW_WIDTH );
+                var y1 = random.Next( SDL_WINDOW_HEIGHT );
+                var x2 = random.Next( SDL_WINDOW_WIDTH );
+                var y2 = random.Next( SDL_WINDOW_HEIGHT );
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                renderer.DrawFilledRect( x1, y1, x2, y2, c );
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Example:  Draw Circles
+    
+    public class exDrawCircles : SDLExampleSceneRender
+    {
+        public exDrawCircles( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawCircles.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                var x = random.Next( SDL_WINDOW_WIDTH );
+                var y = random.Next( SDL_WINDOW_HEIGHT );
+                var r = random.Next( SDL_WINDOW_WIDTH / 10 );
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                renderer.DrawCircle( x, y, r, c );
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Example:  Draw Filled Circles
+    
+    public class exDrawFilledCircles : SDLExampleSceneRender
+    {
+        public exDrawFilledCircles( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawFilledCircles.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                var x = random.Next( SDL_WINDOW_WIDTH );
+                var y = random.Next( SDL_WINDOW_HEIGHT );
+                var r = random.Next( SDL_WINDOW_WIDTH / 10 );
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                renderer.DrawFilledCircle( x, y, r, c );
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Example:  Blit Surfaces
+    
+    public class exBlitSurfaces : SDLExampleSceneRender
+    {
+        public exBlitSurfaces( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exBlitSurfaces.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            var rect = new SDL.SDL_Rect( 0, 0, 64, 64 );
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                rect.x = random.Next( SDL_WINDOW_WIDTH - 64 );
+                rect.y = random.Next( SDL_WINDOW_HEIGHT - 64 );
                 renderer.Blit( rect, surface );
             }
         }
     }
     
-    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
-    void DrawSomeTextures( SDLRenderer renderer )
-    {
-        // You don't really want to uncomment the next line...
-        // Console.WriteLine( "DrawSomeTextures : Event from SDLRenderer.DrawScene" );
-        
-        var rect = new SDL.SDL_Rect();
-        rect.w = 64;
-        rect.h = 64;
-        for( int i = 0; i < ITTERATIONS; i++ )
-        {
-            rect.x = random.Next( SDL_WINDOW_WIDTH );
-            rect.y = random.Next( SDL_WINDOW_HEIGHT );
-            renderer.Blit( rect, texture );
-        }
-    }
+    #endregion
     
-    // void SDLRenderer.Client_Delegate_DrawScene( SDLRenderer renderer )
-    void DrawSample1( SDLRenderer renderer )
+    #region Example:  Blit Textures
+    
+    public class exBlitTextures : SDLExampleSceneRender
     {
-        // You don't really want to uncomment the next line...
-        // Console.WriteLine( "DrawSample1 : Event from SDLRenderer.DrawScene" );
+        public exBlitTextures( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
         
-        // Draw a blue rect
-        var rect = new SDL.SDL_Rect();
-        rect.x = 32;
-        rect.y = 32;
-        rect.w = 64;
-        rect.h = 64;
-        var c = Color.FromArgb( 255, 0, 128, 128 );
-        renderer.DrawFilledRect( rect, c );
-        
-        // Draw a translucent red rect
-        rect.x += 32;
-        rect.y += 32;
-        c = Color.FromArgb( 128, 255, 0, 0 );
-        renderer.DrawFilledRect( rect, c );
-        
-        // Draw a couple translucent lines over the rects
-        var p1 = new SDL.SDL_Point();
-        p1.x = 32;
-        p1.y = 32;
-        var p2 = new SDL.SDL_Point();
-        p2.x = p1.x + 64;
-        p2.y = p1.y + 64;
-        c = Color.FromArgb( 128, 255, 255, 255 );
-        renderer.DrawLine( p1, p2, c );
-        p2.x = p1.x + 32;
-        p2.y = p1.y + 64;
-        p1.x += 64;
-        p1.y += 32;
-        renderer.DrawLine( p1, p2, c );
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exBlitTextures.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            var rect = new SDL.SDL_Rect( 0, 0, 64, 64 );
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                rect.x = random.Next( SDL_WINDOW_WIDTH - 64 );
+                rect.y = random.Next( SDL_WINDOW_HEIGHT - 64 );
+                renderer.Blit( rect, texture );
+            }
+        }
     }
     
     #endregion
     
+    #region Example:  Sample 1
+    
+    public class exSample1 : SDLExampleSceneRender
+    {
+        public exSample1( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exSample1.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            // Draw a blue rect
+            var rect = new SDL.SDL_Rect( 32, 32, 64, 64 );
+            var c = Color.FromArgb( 255, 0, 128, 128 );
+            renderer.DrawFilledRect( rect, c );
+            
+            // Draw a translucent red rect
+            rect.x += 32;
+            rect.y += 32;
+            c = Color.FromArgb( 128, 255, 0, 0 );
+            renderer.DrawFilledRect( rect, c );
+            
+            // Draw a couple translucent lines over the rects
+            var p1 = new SDL.SDL_Point( 32, 32 );
+            var p2 = new SDL.SDL_Point( p1.x + 64, p1.y + 64 );
+            c = Color.FromArgb( 128, 255, 255, 255 );
+            renderer.DrawLine( p1, p2, c );
+            p2.x = p1.x + 32;
+            p2.y = p1.y + 64;
+            p1.x += 64;
+            p1.y += 32;
+            renderer.DrawLine( p1, p2, c );
+            
+            // Draw a yellow circle
+            c = Color.Yellow;
+            renderer.DrawFilledCircle( 256, 64, 32, c );
+            
+            // Draw a magenta circle
+            c = Color.FromArgb( 128, 255, 0, 255 );
+            renderer.DrawFilledCircle( 256 + 32, 64 + 32, 32, c );
+        }
+    }
+    
+    #endregion
+    
+    #endregion
+    
     #region User Input Events
+    
+    // NOTE:  These callbacks will be run in the SDLRenderer thread.
+    //
+    // Access to global resources should use the appropriate safe-guards for a
+    // multi-threaded envirionment.
     
     // void SDLRenderer.Client_Delegate_SDL_Event( SDLRenderer renderer, SDL.SDL_Event e )
     void EventReporter( SDLRenderer renderer, SDL.SDL_Event e )
@@ -436,30 +605,17 @@ public class SDLRendererExampleForm : Form
     public const int CONTROL_PADDING = 6;
     public const int CONTROL_WIDTH = 100;
     public const int CONTROL_HEIGHT = 24;
-    public const int CONTROL_ELEMENTS = 8; // # of checkboxes, buttons, etc
+    public const int BASE_ELEMENTS = 2; // # of static checkboxes, buttons, etc
     
     #endregion
     
     #region Example controls and variables
     
-    Random random = new Random();
+    static Random random = new Random();
     
     CheckBox checkAnchored;
     Button buttonInit;
-    Button buttonPoints;
-    Button buttonPoints2;
-    Button buttonLines;
-    Button buttonSurfaces;
-    Button buttonTextures;
-    Button buttonSample1;
     System.Timers.Timer timer;
-    
-    bool showPoints = false;
-    bool showPoints2 = false;
-    bool showLines = false;
-    bool showSurfaces = false;
-    bool showTextures = false;
-    bool showSample1 = false;
     
     #endregion
     
@@ -467,8 +623,9 @@ public class SDLRendererExampleForm : Form
     
     void CalculateWindowSize( bool forceSmall = false )
     {
+        int elements = BASE_ELEMENTS + SDLExampleSet.Count;
         var wid = CONTROL_WIDTH + ( WINDOW_PADDING * 2 );
-        var hei = WINDOW_TITLE + ( CONTROL_HEIGHT * CONTROL_ELEMENTS ) + ( WINDOW_PADDING * 2 ) + ( CONTROL_PADDING * ( CONTROL_ELEMENTS - 1 ) );
+        var hei = WINDOW_TITLE + ( CONTROL_HEIGHT * elements ) + ( WINDOW_PADDING * 2 ) + ( CONTROL_PADDING * ( elements - 1 ) );
         if(
             ( !forceSmall )&&
             ( checkAnchored != null )&&
@@ -483,7 +640,7 @@ public class SDLRendererExampleForm : Form
     
     #endregion
     
-    #region Example Form Constructor
+    #region Example Form Constructor <--- SDLExampleSceneRenders are instanced here
     
     public SDLRendererExampleForm()
     {
@@ -491,7 +648,6 @@ public class SDLRendererExampleForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         FormBorderStyle = FormBorderStyle.FixedSingle;
-        CalculateWindowSize();
         FormClosing += ExampleClosing;
         
         // This is what we're going to attach the SDL2 window to
@@ -509,12 +665,16 @@ public class SDLRendererExampleForm : Form
         
         // Add some buttons
         buttonInit      = MakeButton( "Init"        , 1, InitClicked );
-        buttonPoints    = MakeButton( "Points"      , 2, PointsClicked );
-        buttonPoints2   = MakeButton( "Points 2"    , 3, Points2Clicked );
-        buttonLines     = MakeButton( "Lines"       , 4, LinesClicked );
-        buttonSurfaces  = MakeButton( "Surfaces"    , 5, SurfacesClicked );
-        buttonTextures  = MakeButton( "Textures"    , 6, TexturesClicked );
-        buttonSample1   = MakeButton( "Sample 1"    , 7, Sample1Clicked );
+        SDLExampleSet.Add( new exDrawPoints(        this, "Points"          ) );
+        SDLExampleSet.Add( new exDrawPoints2(       this, "Points 2"        ) );
+        SDLExampleSet.Add( new exDrawLines(         this, "Lines"           ) );
+        SDLExampleSet.Add( new exDrawRects(         this, "Rects"           ) );
+        SDLExampleSet.Add( new exDrawFilledRects(   this, "Filled Rects"    ) );
+        SDLExampleSet.Add( new exDrawCircles(       this, "Circles"         ) );
+        SDLExampleSet.Add( new exDrawFilledCircles( this, "Filled Circles"  ) );
+        SDLExampleSet.Add( new exBlitSurfaces(      this, "Surfaces"        ) );
+        SDLExampleSet.Add( new exBlitTextures(      this, "Textures"        ) );
+        SDLExampleSet.Add( new exSample1(           this, "Sample 1"        ) );
         
         // Add a performance feedback timer
         timer = new System.Timers.Timer();
@@ -522,6 +682,8 @@ public class SDLRendererExampleForm : Form
         timer.AutoReset = true;
         timer.Elapsed += TimerElapsed;
         
+        // Now all the controls are created, set the form size
+        CalculateWindowSize( true );
     }
     
     Button MakeButton( string text, int position, EventHandler click )
@@ -536,7 +698,7 @@ public class SDLRendererExampleForm : Form
     
     #endregion
     
-    #region Init/Toggle Button Event Methods
+    #region Init Button Event
     
     void InitClicked( object sender, EventArgs e )
     {
@@ -550,48 +712,6 @@ public class SDLRendererExampleForm : Form
         }
     }
     
-    void PointsClicked( object sender, EventArgs e )
-    {
-        ToggleOption( ref showPoints, DrawSomePoints );
-    }
-    
-    void Points2Clicked( object sender, EventArgs e )
-    {
-        ToggleOption( ref showPoints2, DrawSomePoints2 );
-    }
-    
-    void LinesClicked( object sender, EventArgs e )
-    {
-        ToggleOption( ref showLines, DrawSomeLines );
-    }
-    
-    void SurfacesClicked( object sender, EventArgs e )
-    {
-        ToggleOption( ref showSurfaces, DrawSomeSurfaces );
-    }
-    
-    void TexturesClicked( object sender, EventArgs e )
-    {
-        ToggleOption( ref showTextures, DrawSomeTextures );
-    }
-    
-    void Sample1Clicked( object sender, EventArgs e )
-    {
-        ToggleOption( ref showSample1, DrawSample1 );
-    }
-    
-    void ToggleOption( ref bool bValue, SDLRenderer.Client_Delegate_DrawScene scene )
-    {
-        if( sdlRenderer == null ) return;
-        
-        // Add/Remove a render scene callback
-        bValue = !bValue;
-        if( bValue )
-            sdlRenderer.DrawScene += scene;
-        else
-            sdlRenderer.DrawScene -= scene;
-    }
-    
     #endregion
     
     #region Example Form Close Method
@@ -601,17 +721,134 @@ public class SDLRendererExampleForm : Form
         ShutdownRenderer();
         
         // Old habits again...
-        gamePanel.Dispose();
-        checkAnchored.Dispose();
-        buttonInit.Dispose();
-        buttonPoints.Dispose();
-        buttonPoints2.Dispose();
-        buttonLines.Dispose();
-        buttonSurfaces.Dispose();
-        buttonTextures.Dispose();
-        buttonSample1.Dispose();
         timer.Dispose();
     }
+    
+    #endregion
+    
+    #region SDL example "scene manager" and "scene base class"
+    
+    #region Abstract example "scene base class"
+    
+    public abstract class SDLExampleSceneRender
+    {
+        bool _enabled = false;
+        SDLRenderer _renderer;
+        public SDLRenderer Renderer
+        {
+            get
+            {
+                return _renderer;
+            }
+            set
+            {
+                _renderer = value;
+                _enabled = false;
+            }
+        }
+        
+        Button _button = null;
+        Form _form = null;
+        
+        string _optOn = string.Empty;
+        string _optOff = string.Empty;
+        
+        public SDLExampleSceneRender()
+        {
+            throw new NotImplementedException( "Cannot create an SDLExampleSceneRender() via a constructor taking no arguements!" );
+        }
+        
+        public SDLExampleSceneRender( Form form, string optOn, string optOff = null )
+        {
+            if( form == null ) throw new ArgumentNullException( "form", "Cannot be null!" );
+            if( string.IsNullOrEmpty( optOn ) ) throw new ArgumentNullException( "optOn", "Cannot be null!" );
+            
+            _form = form;
+            _optOn = optOn;
+            _optOff = string.IsNullOrEmpty( optOff ) ? optOn : optOff;
+            _enabled = false;
+            _renderer = null;
+            
+            _button = new Button();
+            _button.Text = optOn;
+            _button.CalculcateControlSizeAndLocation( BASE_ELEMENTS + SDLExampleSet.Count );
+            _button.Click += ButtonClick;
+            form.Controls.Add( _button );
+        }
+        
+        void ButtonClick( object sender, EventArgs e )
+        {
+            ToggleState();
+        }
+        
+        public void ToggleState()
+        {
+            EnableState( !_enabled );
+        }
+        
+        public void EnableState( bool enabled )
+        {
+            if( enabled == _enabled ) return;
+            if( _renderer == null )
+            {
+                _enabled = false;
+                _button.Text = _optOn;
+                return;
+            }
+            _enabled = enabled;
+            
+            // Add/Remove a render scene callback
+            if( _enabled )
+            {
+                _button.Text = _optOff;
+                _renderer.DrawScene += DrawScene;
+            }
+            else
+            {
+                _button.Text = _optOn;
+                _renderer.DrawScene -= DrawScene;
+            }
+        }
+        
+        public abstract void DrawScene( SDLRenderer renderer );
+        
+    }
+    
+    #endregion
+    
+    #region Example "scene manager"
+    
+    public static class SDLExampleSet
+    {
+        static List<SDLExampleSceneRender> _examples = new List<SDLExampleSceneRender>();
+        
+        public static void UpdateRenderer( SDLRenderer renderer )
+        {
+            foreach( var example in _examples )
+                example.Renderer = renderer;
+        }
+        
+        public static void EnableDisableAll( bool enable )
+        {
+            foreach( var example in _examples )
+                example.EnableState( enable );
+        }
+        
+        public static void Add( SDLExampleSceneRender scene )
+        {
+            _examples.Add( scene );
+        }
+        
+        public static int Count
+        {
+            get
+            {
+                return _examples.Count;
+            }
+        }
+    }
+    
+    #endregion
     
     #endregion
     
