@@ -143,9 +143,19 @@ namespace SDL2ThinLayer
             DelFunc_DrawCircle( x, y, r, c );
         }
         
+        public void DrawCircle( SDL.SDL_Point p, int r, Color c )
+        {
+            DelFunc_DrawCircle( p.x, p.y, r, c );
+        }
+        
         public void DrawFilledCircle( int x, int y, int r, Color c )
         {
             DelFunc_DrawFilledCircle( x, y, r, c );
+        }
+        
+        public void DrawFilledCircle( SDL.SDL_Point p, int r, Color c )
+        {
+            DelFunc_DrawFilledCircle( p.x, p.y, r, c );
         }
         
         #endregion
@@ -174,6 +184,8 @@ namespace SDL2ThinLayer
         }
         
         #endregion
+        
+        #region Points
         
         #region DrawPoint
         
@@ -209,6 +221,10 @@ namespace SDL2ThinLayer
         
         #endregion
         
+        #endregion
+        
+        #region Lines
+        
         #region DrawLine
         
         void INTERNAL_DelFunc_DrawLine_Fast( int x1, int y1, int x2, int y2, Color c )
@@ -242,6 +258,10 @@ namespace SDL2ThinLayer
         }
         
         #endregion
+        
+        #endregion
+        
+        #region Rects
         
         #region DrawRect
         
@@ -311,22 +331,19 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region DrawCircle
+        #endregion
         
-        void INTERNAL_DelFunc_DrawCircle_Fast( int x, int y, int r, Color c )
+        #region Circles
+        
+        interface INTERNAL_CircleAlgo_UserData
         {
-            // Draw a circle by using the midpoint circle algorithm
+            void Add( int x, int y, int offsetX, int offsetY );
+        }
+        
+        static void INTERNAL_CircleAlgo_Compute( INTERNAL_CircleAlgo_UserData userData, int x, int y, int r )
+        {
+            // Compute a circle by using the midpoint circle algorithm
             // This algo only computes the first 45 degrees of a circle and mirrors all other points
-            
-            // Expected number of points on circumfrence
-            // Use standard 2*PI*r and then round up to the next '8'
-            var expected = ( 1 + ( (int)Math.Round( 2d * Math.PI * (double)r ) >> 3 ) ) << 3;
-            
-            // Actual number of points on circumfrence
-            int count = 0;
-            
-            // Allocate an array for the points
-            var points = new SDL.SDL_Point[ expected ];
             
             // Calculcate the points using circle midpoint
             int offsetX = r - 1;
@@ -338,23 +355,8 @@ namespace SDL2ThinLayer
             
             while( offsetX >= offsetY )
             {
-                #region Add points
-                
-                points[ count + 0 ] = new SDL.SDL_Point( x - offsetX, y + offsetY );
-                points[ count + 1 ] = new SDL.SDL_Point( x - offsetX, y - offsetY );
-                
-                points[ count + 2 ] = new SDL.SDL_Point( x - offsetY, y + offsetX );
-                points[ count + 3 ] = new SDL.SDL_Point( x - offsetY, y - offsetX );
-                
-                points[ count + 4 ] = new SDL.SDL_Point( x + offsetX, y + offsetY );
-                points[ count + 5 ] = new SDL.SDL_Point( x + offsetX, y - offsetY );
-                
-                points[ count + 6 ] = new SDL.SDL_Point( x + offsetY, y + offsetX );
-                points[ count + 7 ] = new SDL.SDL_Point( x + offsetY, y - offsetX );
-                
-                count += 8;
-                
-                #endregion
+                // Add octet to the working set
+                userData.Add( x, y, offsetX, offsetY );
                 
                 if( correction <= 0 )
                 {
@@ -370,8 +372,63 @@ namespace SDL2ThinLayer
                     correction += deltaX - r2;
                 }
             }
+        }
+        
+        #region DrawCircle
+        
+        class INTERNAL_CircleAlgo_EdgeData : INTERNAL_CircleAlgo_UserData
+        {
+            public int Count;
+            public SDL.SDL_Point[] Points;
             
-            INTERNAL_DelFunc_DrawPoints_Fast( points, count, c );
+            public INTERNAL_CircleAlgo_EdgeData( int expected )
+            {
+                Count = 0;
+                Points = new SDL.SDL_Point[ expected ];
+            }
+            
+            public void Add( int x, int y, int offsetX, int offsetY )
+            {
+                var ymx = y - offsetX;
+                var ymy = y - offsetY;
+                var ypy = y + offsetY;
+                var ypx = y + offsetX;
+                
+                var xmx = x - offsetX;
+                var xmy = x - offsetY;
+                var xpy = x + offsetY;
+                var xpx = x + offsetX;
+                
+                Points[ Count + 0 ] = new SDL.SDL_Point( xmx, ypy );
+                Points[ Count + 1 ] = new SDL.SDL_Point( xmx, ymy );
+                
+                Points[ Count + 2 ] = new SDL.SDL_Point( xmy, ypx );
+                Points[ Count + 3 ] = new SDL.SDL_Point( xmy, ymx );
+                
+                Points[ Count + 4 ] = new SDL.SDL_Point( xpx, ypy );
+                Points[ Count + 5 ] = new SDL.SDL_Point( xpx, ymy );
+                
+                Points[ Count + 6 ] = new SDL.SDL_Point( xpy, ypx );
+                Points[ Count + 7 ] = new SDL.SDL_Point( xpy, ymx );
+                
+                Count += 8;
+            }
+        }
+        
+        void INTERNAL_DelFunc_DrawCircle_Fast( int x, int y, int r, Color c )
+        {
+            // Expected number of points on circumfrence
+            // Use standard 2*PI*r and then round up to the next '8'
+            var expected = ( 1 + ( (int)Math.Round( 2d * Math.PI * (double)r ) >> 3 ) ) << 3;
+            
+            // Setup edge data for this circle
+            var ed = new INTERNAL_CircleAlgo_EdgeData( expected );
+            
+            // Compute the edge data
+            INTERNAL_CircleAlgo_Compute( ed, x, y, r );
+            
+            // Render the edges
+            INTERNAL_DelFunc_DrawPoints_Fast( ed.Points, ed.Count, c );
         }
         
         void INTERNAL_DelFunc_DrawCircle( int x, int y, int r, Color c )
@@ -383,79 +440,105 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region DrawFIlledCircle
+        #region DrawFilledCircle
+        
+        class INTERNAL_CircleAlgo_FillData : INTERNAL_CircleAlgo_UserData
+        {
+            int _topY;
+            int _bottomY;
+            bool[] _set;
+            int[] _x1;
+            int[] _x2;
+            
+            public INTERNAL_CircleAlgo_FillData( int expected, int topY )
+            {
+                _topY = topY;
+                _bottomY = _topY + expected - 1;
+                _set = new bool[ expected ];
+                _x1 = new int[ expected ];
+                _x2 = new int[ expected ];
+            }
+            
+            public void Set( int scanline, int x1, int x2 )
+            {
+                if( scanline < _topY ) return;
+                if( scanline > _bottomY ) return;
+                scanline -= _topY;
+                if( !_set[ scanline ] )
+                {
+                    _x1[ scanline ] = x1;
+                    _x2[ scanline ] = x2;
+                    _set[ scanline ] = true;
+                    return;
+                }
+                if( x1 < _x1[ scanline ] ) _x1[ scanline ] = x1;
+                if( x2 > _x2[ scanline ] ) _x2[ scanline ] = x2;
+            }
+            
+            public bool Get( int scanline, out int x1, out int x2 )
+            {
+                if(
+                    ( scanline < _topY )||
+                    ( scanline > _bottomY )
+                )
+                {
+                    x1 = int.MinValue;
+                    x2 = int.MinValue;
+                    return false;
+                }
+                scanline -= _topY;
+                if( !_set[ scanline ] )
+                {
+                    x1 = int.MinValue;
+                    x2 = int.MinValue;
+                    return false;
+                }
+                x1 = _x1[ scanline ];
+                x2 = _x2[ scanline ];
+                return true;
+            }
+            
+            public void Add( int x, int y, int offsetX, int offsetY )
+            {
+                var ymx = y - offsetX;
+                var ymy = y - offsetY;
+                var ypy = y + offsetY;
+                var ypx = y + offsetX;
+                
+                var xmx = x - offsetX;
+                var xmy = x - offsetY;
+                var xpy = x + offsetY;
+                var xpx = x + offsetX;
+                
+                Set( ymy, xmx, xpx );
+                Set( ymx, xmy, xpy );
+                Set( ypy, xmx, xpx );
+                Set( ypx, xmy, xpy );
+            }
+        }
         
         void INTERNAL_DelFunc_DrawFilledCircle_Fast( int x, int y, int r, Color c )
         {
-            // Draw a circle by using the midpoint circle algorithm
-            // This algo only computes the first 45 degrees of a circle and mirrors all other points
+            // Expected number of scanlines of the circle
+            var expected = 1 + r * 2;
+            
+            // Setup fill data for this circle
+            var fd = new INTERNAL_CircleAlgo_FillData( expected, y - r );
+            
+            // Compute the edge data
+            INTERNAL_CircleAlgo_Compute( fd, x, y, r );
+            
+            // Render the scanlines
             INTERNAL_RenderColor = c;
-            
-            // Was this line drawn?
-            // This is a "quick" way to make sure we don't redraw a scanline and thus fixing blending issues.
-            // However, it does introduce accuracy issues in the final circle if a smaller scanline is drawn first.
-            var lineWasDrawn = new bool[ r * 2 ];
-            
-            // Calculcate the points using circle midpoint
-            int offsetX = r - 1;
-            int offsetY = 0;
-            int deltaX = 1;
-            int deltaY = 1;
-            int r2 = r << 1;
-            int correction = deltaX - r2;
-            
-            while( offsetX >= offsetY )
+            int x1, x2;
+            for( int scanline = y - r; scanline <= y + r; scanline++ )
             {
-                #region Draw some lines for a filled circle
-                
-                if( !lineWasDrawn[ r - offsetY ] )
-                {
+                if( fd.Get( scanline, out x1, out x2 ) )
                     SDL.SDL_RenderDrawLine( _sdlRenderer,
-                                           x - offsetX, y - offsetY,
-                                           x + offsetX, y - offsetY );
-                    lineWasDrawn[ r - offsetY ] = true;
-                }
-                
-                if( !lineWasDrawn[ r - offsetX ] )
-                {
-                    SDL.SDL_RenderDrawLine( _sdlRenderer,
-                                           x - offsetY, y - offsetX,
-                                           x + offsetY, y - offsetX );
-                    lineWasDrawn[ r - offsetX ] = true;
-                }
-                
-                if( !lineWasDrawn[ r + offsetY ] )
-                {
-                    SDL.SDL_RenderDrawLine( _sdlRenderer,
-                                           x - offsetX, y + offsetY,
-                                           x + offsetX, y + offsetY );
-                    lineWasDrawn[ r + offsetY ] = true;
-                }
-                
-                if( !lineWasDrawn[ r + offsetX ] )
-                {
-                    SDL.SDL_RenderDrawLine( _sdlRenderer,
-                                           x - offsetY, y + offsetX,
-                                           x + offsetY, y + offsetX );
-                    lineWasDrawn[ r + offsetX ] = true;
-                }
-                
-                #endregion
-                
-                if( correction <= 0 )
-                {
-                    offsetY++;
-                    correction += deltaY;
-                    deltaY += 2;
-                }
-                
-                if( correction > 0 )
-                {
-                    offsetX--;
-                    deltaX += 2;
-                    correction += deltaX - r2;
-                }
+                                           x1, scanline,
+                                           x2, scanline );
             }
+            
         }
         
         void INTERNAL_DelFunc_DrawFilledCircle( int x, int y, int r, Color c )
@@ -464,6 +547,8 @@ namespace SDL2ThinLayer
             INTERNAL_DelFunc_DrawFilledCircle_Fast( x, y, r, c );
             INTERNAL_RenderColor = oldColor;
         }
+        
+        #endregion
         
         #endregion
         

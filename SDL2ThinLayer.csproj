@@ -59,6 +59,8 @@
     <Compile Include="src\SDLExtensions.cs" />
     <Compile Include="src\SDLRenderer.cs" />
     <Compile Include="src\SDLRenderer_Blitters.cs" />
+    <Compile Include="src\SDLRenderer_FileTypes.cs" />
+    <Compile Include="src\SDLRenderer_Image.cs" />
     <Compile Include="src\SDLRenderer_SDLThread_BeginInvoke.cs" />
     <Compile Include="src\SDLRenderer_Surface.cs" />
     <Compile Include="src\SDLRenderer_Primitives.cs" />

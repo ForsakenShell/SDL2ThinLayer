@@ -16,6 +16,7 @@ namespace SDL2ThinLayer
 {
     public partial class SDLRenderer : IDisposable
     {
+        
         #region Public API:  Surface & Texture Blitters
         
         #region Surface Blitters

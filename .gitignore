@@ -10,6 +10,7 @@
 *.DDS
 *.png
 *.PNG
+*.dll
 
 # Build results
 [Dd]ebug/

@@ -3,7 +3,7 @@
  *
  * Public and internal methods for abstracting SDL_Surfaces.
  *
- * TODO:  Add additional create/load/save methods.
+ * For saving and loading from files, see SDLRenderer_Image.cs
  *
  * User: 1000101
  * Date: 1/31/2018
@@ -24,7 +24,17 @@ namespace SDL2ThinLayer
         
         public Surface CreateSurface( int width, int height )
         {
-            return Surface.FromRenderer( this, width, height );
+            return Surface.INTERNAL_Surface_Create( this, width, height, this.BitsPerPixel, this.PixelFormat );
+        }
+        
+        public Surface CreateSurface( int width, int height, uint pixelFormat )
+        {
+            return Surface.INTERNAL_Surface_Create( this, width, height, this.BitsPerPixel, pixelFormat );
+        }
+        
+        public Surface CreateSurface( int width, int height, int bpp, uint pixelFormat )
+        {
+            return Surface.INTERNAL_Surface_Create( this, width, height, bpp, pixelFormat );
         }
         
         public void DestroySurface( ref Surface surface )
@@ -52,6 +62,15 @@ namespace SDL2ThinLayer
             Texture _texture;
             SDLRenderer _renderer;
             
+            uint _PixelFormat;
+            int _bpp;
+            int _Width;
+            int _Height;
+            uint _Rmask;
+            uint _Gmask;
+            uint _Bmask;
+            uint _Amask;
+            
             #endregion
             
             #region Public API:  Access to the cached Texture for the Surface.
@@ -61,7 +80,7 @@ namespace SDL2ThinLayer
                 get
                 {
                     if( _texture == null )
-                        _texture = Texture.FromSurface( this );
+                        _texture = Texture.INTERNAL_Texture_Create( this );
                     return _texture;
                 }
             }
@@ -122,17 +141,78 @@ namespace SDL2ThinLayer
             
             #endregion
             
-            #region Public API:  Surface Creation
+            #region Internal:  Surface Creation
             
-            public static Surface FromRenderer( SDLRenderer renderer, int width, int height )
+            bool FillOutInfo()
             {
-                var surface = new Surface();
-                surface._renderer = renderer;
-                surface.SDLSurface = SDL.SDL_CreateRGBSurfaceWithFormat( 0, width, height, renderer.BitsPerPixel, renderer.PixelFormat );
                 unsafe
                 {
-                    surface.SDLSurfacePtr = (SDL.SDL_Surface*)( surface.SDLSurface.ToPointer() );
+                    // Get the SDL_Surface*
+                    SDLSurfacePtr = (SDL.SDL_Surface*)( SDLSurface.ToPointer() );
+                    
+                    // Fetch the SDL_Surface pixel format
+                    var fmtPtr = (uint*)( SDLSurfacePtr->format.ToPointer() );
+                    _PixelFormat = *fmtPtr;
+                    
+                    // Get the size of the SDL_Surface
+                    _Width = SDLSurfacePtr->w;
+                    _Height = SDLSurfacePtr->h;
                 }
+                
+                // And now it's bits per pixel and channel masks
+                if( SDL.SDL_PixelFormatEnumToMasks(
+                    _PixelFormat,
+                    out _bpp,
+                    out _Rmask,
+                    out _Gmask,
+                    out _Bmask,
+                    out _Amask ) == SDL.SDL_bool.SDL_FALSE )
+                    return false;
+                
+                return true;
+            }
+            
+            internal static Surface INTERNAL_Surface_Create( SDLRenderer renderer, int width, int height, int bpp, uint pixelFormat )
+            {
+                // Create Surface instance
+                var surface = new Surface();
+                
+                // Assign the renderer
+                surface._renderer = renderer;
+                
+                // Create from the renderer
+                surface.SDLSurface = SDL.SDL_CreateRGBSurfaceWithFormat( 0, width, height, bpp, pixelFormat );
+                
+                // Fetch the Surface formatting information
+                if( !surface.FillOutInfo() )
+                {
+                    // Someting dun goned wrung
+                    surface.Dispose();
+                    return null;
+                }
+                
+                return surface;
+            }
+            
+            internal static Surface INTERNAL_Surface_Wrap( SDLRenderer renderer, IntPtr sdlSurface )
+            {
+                // Create Surface instance
+                var surface = new Surface();
+                
+                // Assign the renderer
+                surface._renderer = renderer;
+                
+                // Assign the SDL_Surface
+                surface.SDLSurface = sdlSurface;
+                
+                // Fetch the Surface formatting information
+                if( !surface.FillOutInfo() )
+                {
+                    // Someting dun goned wrung
+                    surface.Dispose();
+                    return null;
+                }
+                
                 return surface;
             }
             
@@ -180,8 +260,7 @@ namespace SDL2ThinLayer
                 get
                 {
                     byte r, g, b;
-                    if( SDL.SDL_GetSurfaceColorMod( SDLSurface, out r, out g, out b ) != 0 ) return Color.Black;
-                    return  Color.FromArgb( r, g, b );
+                    return SDL.SDL_GetSurfaceColorMod( SDLSurface, out r, out g, out b ) != 0 ? Color.Black : Color.FromArgb( r, g, b );
                 }
                 set
                 {
@@ -189,27 +268,108 @@ namespace SDL2ThinLayer
                 }
             }
             
-            #endregion
-            
-            #region Public API:  Surface Drawing Primitives
-            
-            public void DrawFilledRect( SDL.SDL_Rect rect, Color c )
+            /// <summary>
+            /// The SDL_PIXELFORMAT of the SDL_Surface.
+            /// </summary>
+            public uint PixelFormat
             {
-                unsafe
+                get
                 {
-                    SDL.SDL_FillRect( SDLSurface, ref rect, SDL.SDL_MapRGBA( SDLSurfacePtr->format, c.R, c.G, c.B, c.A ) );
+                    return _PixelFormat;
                 }
             }
             
-            public void DrawFilledRects( SDL.SDL_Rect[] rects, int count, Color c )
+            /// <summary>
+            /// The number of Bits Per Pixel (bpp) of the SDL_Surface.
+            /// </summary>
+            public int BitsPerPixel
             {
-                unsafe
+                get
                 {
-                    SDL.SDL_FillRects( SDLSurface, rects, count, SDL.SDL_MapRGBA( SDLSurfacePtr->format, c.R, c.G, c.B, c.A ) );
+                    return _bpp;
+                }
+            }
+            
+            /// <summary>
+            /// The width of the SDL_Surface.
+            /// </summary>
+            public int Width
+            {
+                get
+                {
+                    return _Width;
+                }
+            }
+            
+            /// <summary>
+            /// The Height of the SDL_Surface.
+            /// </summary>
+            public int Height
+            {
+                get
+                {
+                    return _Height;
+                }
+            }
+            
+            /// <summary>
+            /// The alpha channel mask of the SDL_Surface.
+            /// </summary>
+            public uint AlphaMask
+            {
+                get
+                {
+                    return _Amask;
+                }
+            }
+            
+            /// <summary>
+            /// The red channel mask of the SDL_Surface.
+            /// </summary>
+            public uint RedMask
+            {
+                get
+                {
+                    return _Rmask;
+                }
+            }
+            
+            /// <summary>
+            /// The green channel mask of the SDL_Surface.
+            /// </summary>
+            public uint GreenMask
+            {
+                get
+                {
+                    return _Gmask;
+                }
+            }
+            
+            /// <summary>
+            /// The blue channel mask of the SDL_Surface.
+            /// </summary>
+            public uint BlueMask
+            {
+                get
+                {
+                    return _Bmask;
                 }
             }
             
             #endregion
+            
+            #region Public API:  Surface Methods
+            
+            public uint CompatColor( Color c )
+            {
+                unsafe
+                {
+                    return SDL.SDL_MapRGBA( SDLSurfacePtr->format, c.R, c.G, c.B, c.A );
+                }
+            }
+            
+            #endregion
+            
             
         }
         

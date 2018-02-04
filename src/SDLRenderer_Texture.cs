@@ -3,7 +3,7 @@
  *
  * Public and internal methods for abstracting SDL_Textures.
  *
- * TODO:  Add additional create/load/save methods.
+ * For saving and loading from files, see SDLRenderer_Image.cs
  *
  * User: 1000101
  * Date: 1/31/2018
@@ -24,7 +24,7 @@ namespace SDL2ThinLayer
         
         public Texture CreateTextureFromSurface( Surface surface )
         {
-            return Texture.FromSurface( surface );
+            return Texture.INTERNAL_Texture_Create( surface );
         }
         
         public void DestroyTexture( ref Texture texture )
@@ -49,6 +49,15 @@ namespace SDL2ThinLayer
             #region Internal API:  Surface control objects
             
             SDLRenderer _renderer;
+            
+            uint _PixelFormat;
+            int _bpp;
+            int _Width;
+            int _Height;
+            uint _Rmask;
+            uint _Gmask;
+            uint _Bmask;
+            uint _Amask;
             
             #endregion
             
@@ -93,13 +102,45 @@ namespace SDL2ThinLayer
             
             #endregion
             
-            #region Public API:  Texture Creation
+            #region Internal:  Texture Creation
             
-            public static Texture FromSurface( Surface surface )
+            bool FillOutInfo( Surface surface )
             {
+                _PixelFormat = surface.PixelFormat;
+                _Width = surface.Width;
+                _Height = surface.Height;
+                
+                // And now it's bits per pixel and channel masks
+                if( SDL.SDL_PixelFormatEnumToMasks(
+                    _PixelFormat,
+                    out _bpp,
+                    out _Rmask,
+                    out _Gmask,
+                    out _Bmask,
+                    out _Amask ) == SDL.SDL_bool.SDL_FALSE )
+                    return false;
+                
+                return true;
+            }
+            
+            internal static Texture INTERNAL_Texture_Create( Surface surface )
+            {
+                // Create Texture instance
                 var texture = new Texture();
+                
+                // Assign the renderer
                 texture._renderer = surface.Renderer;
+                
+                // Create from the surface
                 texture.SDLTexture = SDL.SDL_CreateTextureFromSurface( texture.Renderer.Renderer, surface.SDLSurface );
+                
+                // Fetch the Texture formatting information
+                if( !texture.FillOutInfo( surface ) )
+                {
+                    // Someting dun goned wrung
+                    texture.Dispose();
+                    return null;
+                }
                 
                 // Copy SDL_Surface characteristics to the SDL_Texture
                 texture.BlendMode = surface.BlendMode;
@@ -153,12 +194,99 @@ namespace SDL2ThinLayer
                 get
                 {
                     byte r, g, b;
-                    if( SDL.SDL_GetTextureColorMod( SDLTexture, out r, out g, out b ) != 0 ) return Color.Black;
-                    return  Color.FromArgb( r, g, b );
+                    return SDL.SDL_GetTextureColorMod( SDLTexture, out r, out g, out b ) != 0 ? Color.Black : Color.FromArgb( r, g, b );
                 }
                 set
                 {
                     SDL.SDL_SetTextureColorMod( SDLTexture, value.R, value.G, value.B );
+                }
+            }
+            
+            /// <summary>
+            /// The SDL_PIXELFORMAT of the SDL_Texture.
+            /// </summary>
+            public uint PixelFormat
+            {
+                get
+                {
+                    return _PixelFormat;
+                }
+            }
+            
+            /// <summary>
+            /// The number of Bits Per Pixel (bpp) of the SDL_Texture.
+            /// </summary>
+            public int BitsPerPixel
+            {
+                get
+                {
+                    return _bpp;
+                }
+            }
+            
+            /// <summary>
+            /// The width of the SDL_Texture.
+            /// </summary>
+            public int Width
+            {
+                get
+                {
+                    return _Width;
+                }
+            }
+            
+            /// <summary>
+            /// The Height of the SDL_Texture.
+            /// </summary>
+            public int Height
+            {
+                get
+                {
+                    return _Height;
+                }
+            }
+            
+            /// <summary>
+            /// The alpha channel mask of the SDL_Texture.
+            /// </summary>
+            public uint AlphaMask
+            {
+                get
+                {
+                    return _Amask;
+                }
+            }
+            
+            /// <summary>
+            /// The red channel mask of the SDL_Texture.
+            /// </summary>
+            public uint RedMask
+            {
+                get
+                {
+                    return _Rmask;
+                }
+            }
+            
+            /// <summary>
+            /// The green channel mask of the SDL_Texture.
+            /// </summary>
+            public uint GreenMask
+            {
+                get
+                {
+                    return _Gmask;
+                }
+            }
+            
+            /// <summary>
+            /// The blue channel mask of the SDL_Texture.
+            /// </summary>
+            public uint BlueMask
+            {
+                get
+                {
+                    return _Bmask;
                 }
             }
             

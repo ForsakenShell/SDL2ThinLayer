@@ -48,7 +48,7 @@ namespace SDL2ThinLayer
         #region Internal:  SDL control objects
         
         IntPtr _sdlWindow;
-        UInt32 _sdlWindow_PixelFormat;
+        uint _sdlWindow_PixelFormat;
         int _sdlWindow_bpp;
         uint _sdlWindow_Rmask;
         uint _sdlWindow_Gmask;
@@ -106,7 +106,7 @@ namespace SDL2ThinLayer
         /// <summary>
         /// The SDL_PIXELFORMAT of the SDL_Window.
         /// </summary>
-        public UInt32 PixelFormat
+        public uint PixelFormat
         {
             get
             {
@@ -125,6 +125,72 @@ namespace SDL2ThinLayer
             }
         }
         
+        /// <summary>
+        /// The width of the SDL_Window.
+        /// </summary>
+        public int Width
+        {
+            get
+            {
+                return _windowSize.Width;
+            }
+        }
+        
+        /// <summary>
+        /// The Height of the SDL_Window.
+        /// </summary>
+        public int Height
+        {
+            get
+            {
+                return _windowSize.Height;
+            }
+        }
+        
+        /// <summary>
+        /// The alpha channel mask of the SDL_Window.
+        /// </summary>
+        public uint AlphaMask
+        {
+            get
+            {
+                return _sdlWindow_Amask;
+            }
+        }
+        
+        /// <summary>
+        /// The red channel mask of the SDL_Window.
+        /// </summary>
+        public uint RedMask
+        {
+            get
+            {
+                return _sdlWindow_Rmask;
+            }
+        }
+        
+        /// <summary>
+        /// The green channel mask of the SDL_Window.
+        /// </summary>
+        public uint GreenMask
+        {
+            get
+            {
+                return _sdlWindow_Gmask;
+            }
+        }
+        
+        /// <summary>
+        /// The blue channel mask of the SDL_Window.
+        /// </summary>
+        public uint BlueMask
+        {
+            get
+            {
+                return _sdlWindow_Bmask;
+            }
+        }
+        
         #endregion
         
         #region Public API:  State Machine States
@@ -139,7 +205,8 @@ namespace SDL2ThinLayer
                 return
                     _sdlInitialized &&
                     INTERNAL_SDLThread_Running &&
-                    !_exitRequested;
+                    !_exitRequested &&
+                    !_windowResetRequired;
             }
         }
         
@@ -249,6 +316,9 @@ namespace SDL2ThinLayer
             // Clear SDLThread controls
             _threadState = SDLThreadState.Inactive;
             _exitRequested = false;
+            _pauseThread = false;
+            _windowResetRequired = false;
+            _windowSaveRequested = false;
             
             // Clear SDLThread Performance Feedback variables
             _actualFPS = 0;

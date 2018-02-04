@@ -28,6 +28,7 @@ namespace SDL2ThinLayer
             Starting = 1,
             Running = 2,
             Stopping = 3,
+            Paused = 4,
             Error = -1
         }
         
@@ -38,12 +39,19 @@ namespace SDL2ThinLayer
         Thread _sdlThread;
         SDLThreadState _threadState;
         bool _exitRequested;
+        bool _pauseThread;
+        bool _windowResetRequired;
         
         Stopwatch _threadTimer;
         long _drawTicks;
         long _eventTicks;
         long _baseFrameDelay;
         
+        ImageTypes _windowSaveFormat;
+        string _windowSaveFilename;
+        bool _windowSaveRequested;
+        bool _windowSaved;
+            
         #endregion
         
         #region Internal:  Performance feedback variables
@@ -152,6 +160,14 @@ namespace SDL2ThinLayer
             }
         }
         
+        bool INTERNAL_SDLThread_Paused
+        {
+            get
+            {
+                return _threadState == SDLThreadState.Paused;
+            }
+        }
+        
         bool INTERNAL_SDLThread_Stopping
         {
             get
@@ -162,7 +178,59 @@ namespace SDL2ThinLayer
         
         #endregion
         
-        #region Internal:  SDLRenderer Thread
+        #region Public API:  SDLThread Pause/Resume
+        
+        /// <summary>
+        /// Tells the SDLThread to pause and will not return until it does or it can't.
+        ///
+        /// DO NOT CALL THIS FROM THE SDLThread!
+        /// </summary>
+        public bool SDLThread_Pause()
+        {
+            if( !INTERNAL_SDLThread_Running ) return false;
+            
+            _pauseThread = true;
+            while( !INTERNAL_SDLThread_Paused )
+                Thread.Sleep( 0 );
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// Tells the SDLThread to resume and will not return until it does or it can't.
+        ///
+        /// DO NOT CALL THIS FROM THE SDLThread!
+        /// </summary>
+        public bool SDLThread_Resume()
+        {
+            if( !INTERNAL_SDLThread_Paused ) return false;
+            
+            _pauseThread = false;
+            while( !INTERNAL_SDLThread_Running )
+                Thread.Sleep( 0 );
+            
+            return true;
+        }
+        
+        #endregion
+        
+        #region Internal:  WaitFor[TypeValue]
+        
+        /// <summary>
+        /// Tells the current thread to wait for the SDLThread to set a specific internal variable to a specific value.
+        ///
+        /// DO NOT CALL THIS FROM THE SDLThread!
+        /// </summary>
+        void INTERNAL_SDLThread_WaitForBool( ref bool toWaitFor, bool initialValue, bool waitValue, int releaseMS )
+        {
+            toWaitFor = initialValue;
+            while( toWaitFor != waitValue )
+                Thread.Sleep( releaseMS );
+        }
+        
+        #endregion
+        
+        #region Internal:  SDLRenderer Thread Main Methods
         
         // All code here should be running in it's own thread created in INTERNAL_Init_SDLThread()
         // and should never be called outside of the thread itself.
@@ -239,35 +307,58 @@ namespace SDL2ThinLayer
             // Loop until we exit
             while( !_exitRequested )
             {
-                loopStartTick = _threadTimer.Elapsed.Ticks;
-                loopDelayTicks += loopTime.Ticks;
                 
-                if( loopDelayTicks >= _baseFrameDelay )
+                if( _pauseThread )
                 {
-                    loopDelayTicks -= _baseFrameDelay;
-                    drawTickDelta = loopStartTick - lastDrawTick;
-                    eventTickDelta = loopStartTick - lastEventTick;
+                    // Pause the thread for 1ms - Not really though, but 0 will make us
+                    // return as soon as we can and use a bunch of CPU which we don't want.
+                    // Using the value of 1 means it will release the CPU for the real
+                    // minimal threshold (typically 15ms on Windows).
+                    _threadState = SDLThreadState.Paused;
                     
-                    if( drawTickDelta >= _drawTicks )
+                    while( _pauseThread )
+                        Thread.Sleep( 1 );
+                    
+                    _threadState = SDLThreadState.Running;
+                }
+                
+                if( _windowSaveRequested )
+                    INTERNAL_SDLThread_SaveWindowToFile();
+                
+                if( _windowResetRequired )
+                    _exitRequested = !INTERNAL_SDLThread_ResetWindowAndRenderer();
+                
+                if( !_exitRequested )
+                {
+                    loopStartTick = _threadTimer.Elapsed.Ticks;
+                    loopDelayTicks += loopTime.Ticks;
+                    
+                    if( loopDelayTicks >= _baseFrameDelay )
                     {
-                        // Time to render the scene
-                        lastFPSCount++;
-                        drawTickDelta -= _drawTicks;
-                        lastDrawTick = loopStartTick;
-                        frameStart = _threadTimer.Elapsed.Ticks;
-                        INTERNAL_SDLThread_RenderScene();
-                        frameEnd = _threadTimer.Elapsed.Ticks;
-                        frameTime += ( frameEnd - frameStart );
+                        loopDelayTicks -= _baseFrameDelay;
+                        drawTickDelta = loopStartTick - lastDrawTick;
+                        eventTickDelta = loopStartTick - lastEventTick;
+                        
+                        if( drawTickDelta >= _drawTicks )
+                        {
+                            // Time to render the scene
+                            lastFPSCount++;
+                            drawTickDelta -= _drawTicks;
+                            lastDrawTick = loopStartTick;
+                            frameStart = _threadTimer.Elapsed.Ticks;
+                            INTERNAL_SDLThread_RenderScene();
+                            frameEnd = _threadTimer.Elapsed.Ticks;
+                            frameTime += ( frameEnd - frameStart );
+                        }
+                        
+                        if( eventTickDelta >= _eventTicks )
+                        {
+                            // Time to check and handle events
+                            eventTickDelta -= _eventTicks;
+                            lastEventTick = loopStartTick;
+                            INTERNAL_SDLThread_EventDispatcher();
+                        }
                     }
-                    
-                    if( eventTickDelta >= _eventTicks )
-                    {
-                        // Time to check and handle events
-                        eventTickDelta -= _eventTicks;
-                        lastEventTick = loopStartTick;
-                        INTERNAL_SDLThread_EventDispatcher();
-                    }
-                    
                 }
                 
                 if( !_exitRequested )
@@ -320,11 +411,40 @@ namespace SDL2ThinLayer
             SDL.SDL_RenderPresent( _sdlRenderer );
         }
         
+        #endregion
+        
+        #region Internal:  SDLThread Save SDL_Window to file (ie: png, etc)
+        
+        void INTERNAL_SDLThread_SaveWindowToFile()
+        {
+            _windowResetRequired = true;
+            
+            var sdlSurface = SDL.SDL_GetWindowSurface( _sdlWindow );
+            var mustLock = SDL.SDL_MUSTLOCK( sdlSurface );
+            
+            _windowSaved = INTERNAL_Save_SDLSurface( sdlSurface, _windowSaveFormat, _windowSaveFilename );
+            
+            _windowSaveRequested = false;
+        }
+        
+        #endregion
+        
+        #region Internal:  SDLThread Init/Denit/Reset
+        
         void INTERNAL_SDLThread_Cleanup( SDLThreadState newState )
         {
             //Console.Write( "INTERNAL_SDLThread_Cleanup()\n" );
             
             // Dispose of the renderer, window, etc
+            INTERNAL_SDLThread_ReleaseWindowAndRenderer();
+            
+            _sdlThread = null;
+            _threadState = newState;
+        }
+        
+        void INTERNAL_SDLThread_ReleaseWindowAndRenderer()
+        {
+            //Console.Write( "INTERNAL_SDLThread_ReleaseWindowAndRenderer()\n" );
             
             if( _sdlRenderer != IntPtr.Zero )
                 SDL.SDL_DestroyRenderer( _sdlRenderer );
@@ -333,9 +453,29 @@ namespace SDL2ThinLayer
             
             _sdlRenderer = IntPtr.Zero;
             _sdlWindow = IntPtr.Zero;
+        }
+        
+        bool INTERNAL_SDLThread_ResetWindowAndRenderer()
+        {
+            //Console.Write( "INTERNAL_SDLThread_ResetWindowAndRenderer()\n" );
             
-            _sdlThread = null;
-            _threadState = newState;
+            // Get the old state values
+            var obm = this.BlendMode;
+            var osc = this.ShowCursor;
+            
+            // Free the existing SDL_Window and SDL_Renderer
+            INTERNAL_SDLThread_ReleaseWindowAndRenderer();
+            
+            // Aquire new a SDL_Window and SDL_Renderer
+            var ret = INTERNAL_SDLThread_InitWindowAndRenderer();
+            if( ret )
+            {
+                // Set the old state values
+                this.BlendMode = obm;
+                this.ShowCursor = osc;
+            }
+            
+            return ret;
         }
         
         bool INTERNAL_SDLThread_InitWindowAndRenderer()
@@ -432,6 +572,7 @@ namespace SDL2ThinLayer
             WinAPI.ShowWindow( sdlWindowHandle, WinAPI.ShowWindowFlags.SW_SHOWNORMAL );
             
             // SDL_Window and SDL_Renderer are ready for use
+            _windowResetRequired = false;
             return true;
         }
         

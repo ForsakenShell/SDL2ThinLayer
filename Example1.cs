@@ -54,7 +54,7 @@ public class SDLRendererExampleForm : Form
     public const int SDL_WINDOW_HEIGHT = 480;
     
     // Number of whatevers to whatever each callback
-    const int ITTERATIONS = 1000;
+    const int ITTERATIONS = 100;
     
     // How often should the profiling information be dumped to console?
     const int PROFILE_FREQUENCY_MS = 1000;
@@ -134,49 +134,64 @@ public class SDLRendererExampleForm : Form
     
     void InitInThread( SDLRenderer renderer )
     {
+        // Dump some renderer info to the console
+        Console.WriteLine(
+            string.Format(
+                "SDLRenderer:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
+                renderer.Width,
+                renderer.Height,
+                renderer.BitsPerPixel,
+                renderer.PixelFormat.ToString( "X" ),
+                renderer.AlphaMask.ToString( "X" ),
+                renderer.RedMask  .ToString( "X" ),
+                renderer.GreenMask.ToString( "X" ),
+                renderer.BlueMask .ToString( "X" )
+               ) );
+        
         // Set the render blender mode
         renderer.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND;
         
-        // Create a simple Surface
+        // Load Surface from a file
         //
         // NOTE:  Surfaces are deprecated and require conversion to Textures before blitting.
-        surface = renderer.CreateSurface( 64, 64 );
-        var rect = new SDL.SDL_Rect( 0, 0, 64, 64 );
+        surface = renderer.LoadSurface( "pointsprite.png" );
         
-        // No blending while we create the surface
-        surface.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_NONE;
+        // Dump some surface info to the console
+        Console.WriteLine(
+            string.Format(
+                "Surface:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
+                surface.Width,
+                surface.Height,
+                surface.BitsPerPixel,
+                surface.PixelFormat.ToString( "X" ),
+                surface.AlphaMask.ToString( "X" ),
+                surface.RedMask  .ToString( "X" ),
+                surface.GreenMask.ToString( "X" ),
+                surface.BlueMask .ToString( "X" )
+               ) );
         
-        // Fill the surface with magenta (alpha 0) and then a white checkerboard pattern (alpha 255)
-        var c = Color.FromArgb( 0, 255, 0, 255 );
-        surface.DrawFilledRect( rect, c );
-        bool sToggle = false;
-        bool toggle = false;
-        rect.w = 8;
-        rect.h = 8;
-        c = Color.FromArgb( 255, 255, 255, 255 );
-        for( int y = 0; y < 64; y += 8 )
-        {
-            toggle = sToggle;
-            for( int x = 0; x < 64; x += 8 )
-            {
-                if( toggle )
-                {
-                    rect.x = x;
-                    rect.y = y;
-                    surface.DrawFilledRect( rect, c );
-                }
-                toggle = !toggle;
-            }
-            sToggle = !sToggle;
-        }
-        // Now set the blend mode for surface blitting
+        // Set the blend mode for surface blitting
         surface.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND;
         
         // Create a Texture from the Surface.
         //
         // No need to set the blend mode, etc - all rendering information is copied
-        // directly in SDLRenderer.CreateTextureFromSurface() from the SDL_Surface settings.
+        // directly in SDLRenderer.CreateTextureFromSurface() from the Surface settings.
         texture = renderer.CreateTextureFromSurface( surface );
+        
+        // Dump some texture info to the console
+        Console.WriteLine(
+            string.Format(
+                "Texture:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
+                texture.Width,
+                texture.Height,
+                texture.BitsPerPixel,
+                texture.PixelFormat.ToString( "X" ),
+                texture.AlphaMask.ToString( "X" ),
+                texture.RedMask  .ToString( "X" ),
+                texture.GreenMask.ToString( "X" ),
+                texture.BlueMask .ToString( "X" )
+               ) );
         
     }
     
@@ -461,11 +476,14 @@ public class SDLRendererExampleForm : Form
             // You don't really want to uncomment the next line...
             // Console.WriteLine( "exBlitSurfaces.DrawScene : Event from SDLRenderer.DrawScene" );
             
-            var rect = new SDL.SDL_Rect( 0, 0, 64, 64 );
+            var sW = surface.Width;
+            var sH = surface.Height;
+            var rect = new SDL.SDL_Rect( 0, 0, sW, sH );
+            
             for( int i = 0; i < ITTERATIONS; i++ )
             {
-                rect.x = random.Next( SDL_WINDOW_WIDTH - 64 );
-                rect.y = random.Next( SDL_WINDOW_HEIGHT - 64 );
+                rect.x = random.Next( SDL_WINDOW_WIDTH  - sW );
+                rect.y = random.Next( SDL_WINDOW_HEIGHT - sH );
                 renderer.Blit( rect, surface );
             }
         }
@@ -484,11 +502,14 @@ public class SDLRendererExampleForm : Form
             // You don't really want to uncomment the next line...
             // Console.WriteLine( "exBlitTextures.DrawScene : Event from SDLRenderer.DrawScene" );
             
-            var rect = new SDL.SDL_Rect( 0, 0, 64, 64 );
+            var tW = texture.Width;
+            var tH = texture.Height;
+            var rect = new SDL.SDL_Rect( 0, 0, tW, tH );
+            
             for( int i = 0; i < ITTERATIONS; i++ )
             {
-                rect.x = random.Next( SDL_WINDOW_WIDTH - 64 );
-                rect.y = random.Next( SDL_WINDOW_HEIGHT - 64 );
+                rect.x = random.Next( SDL_WINDOW_WIDTH  - tW );
+                rect.y = random.Next( SDL_WINDOW_HEIGHT - tH );
                 renderer.Blit( rect, texture );
             }
         }
@@ -508,34 +529,46 @@ public class SDLRendererExampleForm : Form
             // Console.WriteLine( "exSample1.DrawScene : Event from SDLRenderer.DrawScene" );
             
             // Draw a blue rect
-            var rect = new SDL.SDL_Rect( 32, 32, 64, 64 );
+            var rect1 = new SDL.SDL_Rect( 32, 32, 64, 64 );
             var c = Color.FromArgb( 255, 0, 128, 128 );
-            renderer.DrawFilledRect( rect, c );
+            renderer.DrawFilledRect( rect1, c );
             
             // Draw a translucent red rect
-            rect.x += 32;
-            rect.y += 32;
+            var rect2 = new SDL.SDL_Rect( rect1.x + 32, rect1.y + 32, rect1.w, rect1.h );
             c = Color.FromArgb( 128, 255, 0, 0 );
-            renderer.DrawFilledRect( rect, c );
+            renderer.DrawFilledRect( rect2, c );
+            c = Color.FromArgb( 255, 255, 0, 0 );
+            renderer.DrawRect( rect2, c );
             
             // Draw a couple translucent lines over the rects
             var p1 = new SDL.SDL_Point( 32, 32 );
             var p2 = new SDL.SDL_Point( p1.x + 64, p1.y + 64 );
+            var p3 = new SDL.SDL_Point( p1.x + 32, p1.y + 64 );
+            var p4 = new SDL.SDL_Point( p1.x + 64, p1.y + 32 );
             c = Color.FromArgb( 128, 255, 255, 255 );
             renderer.DrawLine( p1, p2, c );
-            p2.x = p1.x + 32;
-            p2.y = p1.y + 64;
-            p1.x += 64;
-            p1.y += 32;
-            renderer.DrawLine( p1, p2, c );
+            renderer.DrawLine( p3, p4, c );
             
             // Draw a yellow circle
+            var p5 = new SDL.SDL_Point( 192, 64 );
             c = Color.Yellow;
-            renderer.DrawFilledCircle( 256, 64, 32, c );
+            renderer.DrawFilledCircle( p5, 32, c );
             
             // Draw a magenta circle
+            var p6 = new SDL.SDL_Point( p5.x + 32, p5.y + 32 );
             c = Color.FromArgb( 128, 255, 0, 255 );
-            renderer.DrawFilledCircle( 256 + 32, 64 + 32, 32, c );
+            renderer.DrawFilledCircle( p6, 32, c );
+            c = Color.FromArgb( 255, 255, 0, 255 );
+            renderer.DrawCircle( p6, 32, c );
+            
+            // Blit the surface
+            var rect3 = new SDL.SDL_Rect( 32, 192, surface.Width, surface.Height );
+            renderer.Blit( rect3, surface );
+            
+            // Blit the texture
+            var rect4 = new SDL.SDL_Rect( rect3.x + surface.Width / 4, rect3.y + surface.Height / 4, rect3.w, rect3.h );
+            renderer.Blit( rect4, texture );
+            
         }
     }
     
@@ -605,7 +638,7 @@ public class SDLRendererExampleForm : Form
     public const int CONTROL_PADDING = 6;
     public const int CONTROL_WIDTH = 100;
     public const int CONTROL_HEIGHT = 24;
-    public const int BASE_ELEMENTS = 2; // # of static checkboxes, buttons, etc
+    public const int BASE_ELEMENTS = 3; // # of static checkboxes, buttons, etc
     
     #endregion
     
@@ -615,6 +648,7 @@ public class SDLRendererExampleForm : Form
     
     CheckBox checkAnchored;
     Button buttonInit;
+    Button buttonSave;
     System.Timers.Timer timer;
     
     #endregion
@@ -665,6 +699,7 @@ public class SDLRendererExampleForm : Form
         
         // Add some buttons
         buttonInit      = MakeButton( "Init"        , 1, InitClicked );
+        buttonSave      = MakeButton( "Save PNG"    , 2, SaveClicked );
         SDLExampleSet.Add( new exDrawPoints(        this, "Points"          ) );
         SDLExampleSet.Add( new exDrawPoints2(       this, "Points 2"        ) );
         SDLExampleSet.Add( new exDrawLines(         this, "Lines"           ) );
@@ -710,6 +745,12 @@ public class SDLRendererExampleForm : Form
         {
             ShutdownRenderer();
         }
+    }
+    
+    void SaveClicked( object sender, EventArgs e )
+    {
+        if( sdlRenderer != null )
+            sdlRenderer.SaveSurface( ImageTypes.PNG, "example1.png" );
     }
     
     #endregion
