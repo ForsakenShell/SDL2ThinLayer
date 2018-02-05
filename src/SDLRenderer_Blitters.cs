@@ -10,6 +10,10 @@
  */
 using System;
 
+using Color = System.Drawing.Color;
+using Point = System.Drawing.Point;
+using Rectangle = System.Drawing.Rectangle;
+using Size = System.Drawing.Size;
 using SDL2;
 
 namespace SDL2ThinLayer
@@ -87,7 +91,7 @@ namespace SDL2ThinLayer
         public void Blit( SDL.SDL_Rect dstRect, Texture texture )
         {
             if( texture == null ) return;
-            SDL.SDL_RenderCopy( _sdlRenderer, texture.SDLTexture, IntPtr.Zero, ref dstRect  );
+            SDL.SDL_RenderCopy( _sdlRenderer, texture._sdlTexture, IntPtr.Zero, ref dstRect  );
         }
         
         /// <summary>
@@ -99,7 +103,7 @@ namespace SDL2ThinLayer
         public void Blit( SDL.SDL_Rect dstRect, Texture texture, SDL.SDL_Rect srcRect )
         {
             if( texture == null ) return;
-            SDL.SDL_RenderCopy( _sdlRenderer, texture.SDLTexture, ref srcRect, ref dstRect  );
+            SDL.SDL_RenderCopy( _sdlRenderer, texture._sdlTexture, ref srcRect, ref dstRect  );
         }
         
         /// <summary>
@@ -113,7 +117,7 @@ namespace SDL2ThinLayer
         public void Blit( SDL.SDL_Rect dstRect, Texture texture, double angle )
         {
             if( texture == null ) return;
-            SDL.SDL_RenderCopyEx( _sdlRenderer, texture.SDLTexture, IntPtr.Zero, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
+            SDL.SDL_RenderCopyEx( _sdlRenderer, texture._sdlTexture, IntPtr.Zero, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
         }
         
         /// <summary>
@@ -128,7 +132,7 @@ namespace SDL2ThinLayer
         public void Blit( SDL.SDL_Rect dstRect, Texture texture, SDL.SDL_Rect srcRect, double angle )
         {
             if( texture == null ) return;
-            SDL.SDL_RenderCopyEx( _sdlRenderer, texture.SDLTexture, ref srcRect, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
+            SDL.SDL_RenderCopyEx( _sdlRenderer, texture._sdlTexture, ref srcRect, ref dstRect, angle, IntPtr.Zero, SDL.SDL_RendererFlip.SDL_FLIP_NONE );
         }
         
         #endregion

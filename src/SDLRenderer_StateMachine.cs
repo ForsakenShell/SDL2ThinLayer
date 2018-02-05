@@ -16,11 +16,12 @@ using System.Collections.Generic;
 
 using System.Drawing;
 using System.Windows.Forms;
-using SDL2;
 
-using Size = System.Drawing.Size;
-using Point = System.Drawing.Point;
 using Color = System.Drawing.Color;
+using Point = System.Drawing.Point;
+using Rectangle = System.Drawing.Rectangle;
+using Size = System.Drawing.Size;
+using SDL2;
 
 namespace SDL2ThinLayer
 {
@@ -370,7 +371,20 @@ namespace SDL2ThinLayer
             
             #endif
             
-            return SDL.SDL_Init( subsysFlags ) == 0;
+            // SDL_Init returns 0 on success
+            if( SDL.SDL_Init( subsysFlags ) != 0 )
+                return false;
+            
+            // IMG_Init returns same init flags on success
+            var imgInit = SDL_image.IMG_InitFlags.IMG_INIT_PNG;
+            if( imgInit != (SDL_image.IMG_InitFlags)SDL_image.IMG_Init( imgInit ) ) return false;
+            
+            // TTF_Init returns 0 on success
+            if( SDL_ttf.TTF_Init() != 0 )
+                return false;
+            
+            // We made it through the gambit!
+            return true;
         }
         
         bool INTERNAL_Init_SDLThread()

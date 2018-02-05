@@ -49,7 +49,10 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Example1.cs" />
+    <Compile Include="src\SDLRenderer_Font.cs" />
+    <Compile Include="src\SDLRenderer_SDLColors.cs" />
+    <Compile Include="src\SDLRenderer_Text.cs" />
+    <Compile Include="TestBench.cs" />
     <Compile Include="src\Platform.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="src\SDL2-CS\SDL2.cs" />
@@ -72,6 +75,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="LibertySans.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="libfreetype-6.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Readme.md" />
     <None Include="SDL2.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -80,6 +89,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="libpng16-16.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="SDL2_ttf.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="zlib1.dll">

@@ -13,6 +13,9 @@
 using System;
 
 using Color = System.Drawing.Color;
+using Point = System.Drawing.Point;
+using Rectangle = System.Drawing.Rectangle;
+using Size = System.Drawing.Size;
 using SDL2;
 
 namespace SDL2ThinLayer
@@ -50,17 +53,12 @@ namespace SDL2ThinLayer
         public class Surface : IDisposable
         {
             
-            #region Semi-Public API:  The underlying SDL_Surface.
-            
-            public IntPtr SDLSurface;
-            public unsafe SDL.SDL_Surface* SDLSurfacePtr;
-            
-            #endregion
-            
             #region Internal API:  Surface control objects
             
+            internal IntPtr _sdlSurface;
+            unsafe internal SDL.SDL_Surface* _sdlSurfacePtr;
+            SDLRenderer _sdlRenderer;
             Texture _texture;
-            SDLRenderer _renderer;
             
             uint _PixelFormat;
             int _bpp;
@@ -70,6 +68,10 @@ namespace SDL2ThinLayer
             uint _Gmask;
             uint _Bmask;
             uint _Amask;
+            
+            SDL.SDL_BlendMode _blendMode;
+            byte _alphaMod;
+            Color _colorMod;
             
             #endregion
             
@@ -94,13 +96,29 @@ namespace SDL2ThinLayer
             
             #endregion
             
-            #region Public API:  The SDLRenderer associated with this Surface.
+            #region Public API:  The SDL objects associated with this Surface.
             
             public SDLRenderer Renderer
             {
                 get
                 {
-                    return _renderer;
+                    return _sdlRenderer;
+                }
+            }
+            
+            public IntPtr SDLSurface
+            {
+                get
+                {
+                    return _sdlSurface;
+                }
+            }
+            
+            unsafe public SDL.SDL_Surface* SDLSurfacePtr
+            {
+                get
+                {
+                    return _sdlSurfacePtr;
                 }
             }
             
@@ -127,14 +145,14 @@ namespace SDL2ThinLayer
                 
                 DeleteTexture();
                 
-                if( SDLSurface != IntPtr.Zero )
-                    SDL.SDL_FreeSurface( SDLSurface );
-                SDLSurface = IntPtr.Zero;
+                if( _sdlSurface != IntPtr.Zero )
+                    SDL.SDL_FreeSurface( _sdlSurface );
+                _sdlSurface = IntPtr.Zero;
                 unsafe
                 {
-                    SDLSurfacePtr = null;
+                    _sdlSurfacePtr = null;
                 }
-                _renderer = null;
+                _sdlRenderer = null;
                 
                 _disposed = true;
             }
@@ -148,15 +166,15 @@ namespace SDL2ThinLayer
                 unsafe
                 {
                     // Get the SDL_Surface*
-                    SDLSurfacePtr = (SDL.SDL_Surface*)( SDLSurface.ToPointer() );
+                    _sdlSurfacePtr = (SDL.SDL_Surface*)( _sdlSurface.ToPointer() );
                     
                     // Fetch the SDL_Surface pixel format
-                    var fmtPtr = (uint*)( SDLSurfacePtr->format.ToPointer() );
+                    var fmtPtr = (uint*)( _sdlSurfacePtr->format.ToPointer() );
                     _PixelFormat = *fmtPtr;
                     
                     // Get the size of the SDL_Surface
-                    _Width = SDLSurfacePtr->w;
-                    _Height = SDLSurfacePtr->h;
+                    _Width = _sdlSurfacePtr->w;
+                    _Height = _sdlSurfacePtr->h;
                 }
                 
                 // And now it's bits per pixel and channel masks
@@ -169,6 +187,17 @@ namespace SDL2ThinLayer
                     out _Amask ) == SDL.SDL_bool.SDL_FALSE )
                     return false;
                 
+                if( SDL.SDL_GetSurfaceBlendMode( _sdlSurface, out _blendMode ) != 0 )
+                    return false;
+                
+                if( SDL.SDL_GetSurfaceAlphaMod( _sdlSurface, out _alphaMod ) != 0 )
+                    return false;
+                
+                byte r, g, b;
+                if( SDL.SDL_GetSurfaceColorMod( _sdlSurface, out r, out g, out b ) != 0 )
+                    return false;
+                _colorMod = Color.FromArgb( r, g, b );
+                
                 return true;
             }
             
@@ -178,10 +207,15 @@ namespace SDL2ThinLayer
                 var surface = new Surface();
                 
                 // Assign the renderer
-                surface._renderer = renderer;
+                surface._sdlRenderer = renderer;
                 
                 // Create from the renderer
-                surface.SDLSurface = SDL.SDL_CreateRGBSurfaceWithFormat( 0, width, height, bpp, pixelFormat );
+                surface._sdlSurface = SDL.SDL_CreateRGBSurfaceWithFormat( 0, width, height, bpp, pixelFormat );
+                if( surface._sdlSurface == IntPtr.Zero )
+                {
+                    surface.Dispose();
+                    return null;
+                }
                 
                 // Fetch the Surface formatting information
                 if( !surface.FillOutInfo() )
@@ -200,10 +234,10 @@ namespace SDL2ThinLayer
                 var surface = new Surface();
                 
                 // Assign the renderer
-                surface._renderer = renderer;
+                surface._sdlRenderer = renderer;
                 
                 // Assign the SDL_Surface
-                surface.SDLSurface = sdlSurface;
+                surface._sdlSurface = sdlSurface;
                 
                 // Fetch the Surface formatting information
                 if( !surface.FillOutInfo() )
@@ -227,12 +261,14 @@ namespace SDL2ThinLayer
             {
                 get
                 {
-                    SDL.SDL_BlendMode mode;
-                    return SDL.SDL_GetSurfaceBlendMode( SDLSurface, out mode ) != 0 ? SDL.SDL_BlendMode.SDL_BLENDMODE_INVALID : mode;
+                    return _blendMode;
                 }
                 set
                 {
-                    SDL.SDL_SetSurfaceBlendMode( SDLSurface, value );
+                    _blendMode = value;
+                    SDL.SDL_SetSurfaceBlendMode( _sdlSurface, value );
+                    if( _texture != null )
+                        _texture.BlendMode = value;
                 }
             }
             
@@ -243,12 +279,14 @@ namespace SDL2ThinLayer
             {
                 get
                 {
-                    byte alpha;
-                    return SDL.SDL_GetSurfaceAlphaMod( SDLSurface, out alpha ) != 0 ? (byte)0 : alpha;
+                    return _alphaMod;
                 }
                 set
                 {
-                    SDL.SDL_SetSurfaceAlphaMod( SDLSurface, value );
+                    _alphaMod = value;
+                    SDL.SDL_SetSurfaceAlphaMod( _sdlSurface, value );
+                    if( _texture != null )
+                        _texture.AlphaMod = value;
                 }
             }
             
@@ -259,12 +297,14 @@ namespace SDL2ThinLayer
             {
                 get
                 {
-                    byte r, g, b;
-                    return SDL.SDL_GetSurfaceColorMod( SDLSurface, out r, out g, out b ) != 0 ? Color.Black : Color.FromArgb( r, g, b );
+                    return _colorMod;
                 }
                 set
                 {
-                    SDL.SDL_SetSurfaceColorMod( SDLSurface, value.R, value.G, value.B );
+                    _colorMod = value;
+                    SDL.SDL_SetSurfaceColorMod( _sdlSurface, value.R, value.G, value.B );
+                    if( _texture != null )
+                        _texture.ColorMod = value;
                 }
             }
             
@@ -364,7 +404,7 @@ namespace SDL2ThinLayer
             {
                 unsafe
                 {
-                    return SDL.SDL_MapRGBA( SDLSurfacePtr->format, c.R, c.G, c.B, c.A );
+                    return SDL.SDL_MapRGBA( _sdlSurfacePtr->format, c.R, c.G, c.B, c.A );
                 }
             }
             

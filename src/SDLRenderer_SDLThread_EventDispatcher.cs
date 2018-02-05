@@ -16,6 +16,10 @@
  */
 using System;
 
+using Color = System.Drawing.Color;
+using Point = System.Drawing.Point;
+using Rectangle = System.Drawing.Rectangle;
+using Size = System.Drawing.Size;
 using SDL2;
 
 namespace SDL2ThinLayer
@@ -28,6 +32,7 @@ namespace SDL2ThinLayer
         public delegate void Client_Delegate_Invoke( SDLRenderer renderer );
         public delegate void Client_Delegate_DrawScene( SDLRenderer renderer );
         public delegate void Client_Delegate_SDL_Event( SDLRenderer renderer, SDL.SDL_Event e );
+        public delegate void Client_Delegate_RendererReset( SDLRenderer renderer );
         public delegate void Client_Delegate_WindowClosed( SDLRenderer renderer );
         
         #endregion
@@ -45,6 +50,12 @@ namespace SDL2ThinLayer
         public Client_Delegate_SDL_Event MouseButtonUp;
         public Client_Delegate_SDL_Event MouseMove;
         public Client_Delegate_SDL_Event MouseWheel;
+        
+        // The RendererReset event can happen at any time and executes in the SDLThread.  This event occurs
+        // whenever the SDL_Window and/or SDL_Render are "reset" in any way.  Resources that are linked to
+        // the SDLRenderer (SDLRenderer.Texture, etc) should be recreated on this event.  The event itself
+        // occurs after the SDL_Window and/or SDL_Render are recreated (as applicable).
+        public Client_Delegate_RendererReset RendererReset;
         
         // For a stand-alone SDL_Window, we need an event handler for it to signal back that the user closed it.
         // Client code cannot explicitly [un]subscribe to this, the handler must be passed to the constructor.

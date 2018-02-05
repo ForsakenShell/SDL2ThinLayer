@@ -13,6 +13,7 @@ using System;
 using Color = System.Drawing.Color;
 using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
+using Size = System.Drawing.Size;
 using SDL2;
 
 namespace SDL2ThinLayer

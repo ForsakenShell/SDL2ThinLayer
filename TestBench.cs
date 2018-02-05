@@ -1,7 +1,7 @@
 ﻿/*
- * Example1.cs
+ * TestBench.cs
  *
- * This is a basic example of how to use SDL2ThinLayer.
+ * This is a basic example of how to use SDL2ThinLayer as well as serving as basic unit testing.
  *
  * SDL2ThinLayer was adapted from FNA by Ethan "flibitijibibo" Lee.
  *
@@ -65,12 +65,18 @@ public class SDLRendererExampleForm : Form
     
     // These are the variables you care about.
     
+    // SDL2ThinLayer.SDLRenderer
+    //
     // Threaded renderer and specific event queue
     SDLRenderer sdlRenderer;
     
+    // System.Windows.Forms.Control (well, Panel in this case)
+    //
     // Target control to set the render target to, could be any control but the one with
     // the least complexity and most flexibility is probably best (hence Panel).
     Panel gamePanel;
+    
+    // Assets:
     
     // NOTE:  The following does not need to be static other than the nature of this example code
     
@@ -79,6 +85,9 @@ public class SDLRendererExampleForm : Form
     
     // Textures are hardware based and are much faster.
     static SDLRenderer.Texture texture;
+    
+    // Fonts are not very optimal, don't draw too much text.
+    static SDLRenderer.Font font;
     
     #endregion
     
@@ -104,9 +113,6 @@ public class SDLRendererExampleForm : Form
                                           "SDL_Window as a tool window in it's own thread!",
                                           SDLWindowClosed );
         
-        // Tell the examples the renderer to use
-        SDLExampleSet.UpdateRenderer( sdlRenderer );
-        
         // Add some event callbacks, this example just reports the event ID to console
         sdlRenderer.KeyDown += EventReporter;
         sdlRenderer.KeyUp += EventReporter;
@@ -114,6 +120,9 @@ public class SDLRendererExampleForm : Form
         sdlRenderer.MouseButtonUp += EventReporter;
         sdlRenderer.MouseMove += EventReporter;
         sdlRenderer.MouseWheel += EventReporter;
+        
+        // We have assets, we need to handle changes to the SDL_Window and SDL_Renderer
+        sdlRenderer.RendererReset += SDLRendererReset;
         
         // Setting certain render states must be done from the SDL thread.
         // To execute something in the SDL thread, use SDLRenderer.Invoke()
@@ -134,64 +143,17 @@ public class SDLRendererExampleForm : Form
     
     void InitInThread( SDLRenderer renderer )
     {
-        // Dump some renderer info to the console
-        Console.WriteLine(
-            string.Format(
-                "SDLRenderer:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
-                renderer.Width,
-                renderer.Height,
-                renderer.BitsPerPixel,
-                renderer.PixelFormat.ToString( "X" ),
-                renderer.AlphaMask.ToString( "X" ),
-                renderer.RedMask  .ToString( "X" ),
-                renderer.GreenMask.ToString( "X" ),
-                renderer.BlueMask .ToString( "X" )
-               ) );
-        
         // Set the render blender mode
         renderer.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND;
         
-        // Load Surface from a file
-        //
-        // NOTE:  Surfaces are deprecated and require conversion to Textures before blitting.
-        surface = renderer.LoadSurface( "pointsprite.png" );
+        // Load some assets
+        CreateAssetsForRenderer( renderer );
         
-        // Dump some surface info to the console
-        Console.WriteLine(
-            string.Format(
-                "Surface:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
-                surface.Width,
-                surface.Height,
-                surface.BitsPerPixel,
-                surface.PixelFormat.ToString( "X" ),
-                surface.AlphaMask.ToString( "X" ),
-                surface.RedMask  .ToString( "X" ),
-                surface.GreenMask.ToString( "X" ),
-                surface.BlueMask .ToString( "X" )
-               ) );
+        // Tell the examples the renderer to use
+        SDLExampleSet.UpdateRenderer( sdlRenderer );
         
-        // Set the blend mode for surface blitting
-        surface.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND;
-        
-        // Create a Texture from the Surface.
-        //
-        // No need to set the blend mode, etc - all rendering information is copied
-        // directly in SDLRenderer.CreateTextureFromSurface() from the Surface settings.
-        texture = renderer.CreateTextureFromSurface( surface );
-        
-        // Dump some texture info to the console
-        Console.WriteLine(
-            string.Format(
-                "Texture:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
-                texture.Width,
-                texture.Height,
-                texture.BitsPerPixel,
-                texture.PixelFormat.ToString( "X" ),
-                texture.AlphaMask.ToString( "X" ),
-                texture.RedMask  .ToString( "X" ),
-                texture.GreenMask.ToString( "X" ),
-                texture.BlueMask .ToString( "X" )
-               ) );
+        // Barf to the console
+        ConsoleDump( renderer );
         
     }
     
@@ -214,14 +176,7 @@ public class SDLRendererExampleForm : Form
         // While SDL2ThingLayer implements IDisposable in all it's classes and
         // explicitly disposes of their resources in their destructors, I always
         // like to clean up after myself (old habits).
-        
-        // Dispose of the Surface
-        if( surface != null )
-            sdlRenderer.DestroySurface( ref surface );
-        
-        // Dispose of the Texture
-        if( texture != null )
-            sdlRenderer.DestroyTexture( ref texture );
+        ReleaseAssets();
         
         // Dispose of the Renderer
         if( sdlRenderer != null )
@@ -230,7 +185,115 @@ public class SDLRendererExampleForm : Form
         // This is all you really need to do though, GC will handle the rest
         surface = null;
         texture = null;
+        font = null;
         sdlRenderer = null;
+        
+    }
+    
+    #endregion
+    
+    #region Assets
+    
+    void CreateAssetsForRenderer( SDLRenderer renderer )
+    {
+        // Load Surface from a file
+        //
+        // NOTE:  Surfaces are deprecated and require conversion to Textures before blitting.
+        surface = renderer.LoadSurface( "pointsprite.png" );
+        
+        // Set the blend mode for surface blitting
+        surface.BlendMode = SDL.SDL_BlendMode.SDL_BLENDMODE_BLEND;
+        
+        // Create a Texture from the Surface.
+        //
+        // No need to set the blend mode, etc - all rendering information is copied
+        // directly in SDLRenderer.CreateTextureFromSurface() from the Surface settings.
+        texture = renderer.CreateTextureFromSurface( surface );
+        
+        // Load a font from file.
+        font = renderer.CreateFont( 12, "LibertySans.ttf" );
+        if( font == null )
+            throw new Exception( string.Format( "Unable to create font!\n\n{0}", SDL.SDL_GetError() ) );
+        
+    }
+    
+    void ReleaseAssets()
+    {
+        // Dispose of the Surface
+        if( surface != null )
+            sdlRenderer.DestroySurface( ref surface );
+        
+        // Dispose of the Texture
+        if( texture != null )
+            sdlRenderer.DestroyTexture( ref texture );
+        
+        // Dispose of the Font
+        if( Font != null )
+            sdlRenderer.DestroyFont( ref font );
+        
+        surface = null;
+        texture = null;
+        font = null;
+    }
+    
+    #endregion
+    
+    #region Console Dump
+    
+    void ConsoleDump( SDLRenderer renderer )
+    {
+        // Dump some renderer info to the console
+        Console.WriteLine(
+            string.Format(
+                "SDLRenderer:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
+                renderer.Width,
+                renderer.Height,
+                renderer.BitsPerPixel,
+                renderer.PixelFormat.ToString( "X" ),
+                renderer.AlphaMask.ToString( "X" ),
+                renderer.RedMask  .ToString( "X" ),
+                renderer.GreenMask.ToString( "X" ),
+                renderer.BlueMask .ToString( "X" )
+               ) );
+        
+        // Dump some surface info to the console
+        Console.WriteLine(
+            string.Format(
+                "Surface:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
+                surface.Width,
+                surface.Height,
+                surface.BitsPerPixel,
+                surface.PixelFormat.ToString( "X" ),
+                surface.AlphaMask.ToString( "X" ),
+                surface.RedMask  .ToString( "X" ),
+                surface.GreenMask.ToString( "X" ),
+                surface.BlueMask .ToString( "X" )
+               ) );
+        
+        // Dump some texture info to the console
+        Console.WriteLine(
+            string.Format(
+                "Texture:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
+                texture.Width,
+                texture.Height,
+                texture.BitsPerPixel,
+                texture.PixelFormat.ToString( "X" ),
+                texture.AlphaMask.ToString( "X" ),
+                texture.RedMask  .ToString( "X" ),
+                texture.GreenMask.ToString( "X" ),
+                texture.BlueMask .ToString( "X" )
+               ) );
+        
+        // Dump some texture info to the console
+        var fontMetrics = font.Metrics;
+        Console.WriteLine(
+            string.Format(
+                "Font:\n\tHeight = {0}\n\tAscent = {1}\n\tDescent = {2}\n\tLineSkip = {3}",
+                fontMetrics.Height,
+                fontMetrics.Ascent,
+                fontMetrics.Descent,
+                fontMetrics.LineSkip
+               ) );
         
     }
     
@@ -247,6 +310,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Draw Points
     
+    /// <summary>
+    /// Fills the SDL_Window with a single color using individual SDLRender.DrawPoint calls
+    /// </summary>
     public class exDrawPoints : SDLExampleSceneRender
     {
         public exDrawPoints( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -276,6 +342,10 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Draw Points 2
     
+    /// <summary>
+    /// Fills the SDL_Window with a single color by building an array of SDL_Points mapped to the
+    /// screen and a single call to SDLRender.DrawPoints
+    /// </summary>
     public class exDrawPoints2 : SDLExampleSceneRender
     {
         const int TOTAL_PIX = SDL_WINDOW_HEIGHT * SDL_WINDOW_WIDTH;
@@ -319,6 +389,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Draw Lines
     
+    /// <summary>
+    /// Draws ITTERATIONS random lines using SDLRenderer.DrawLine
+    /// </summary>
     public class exDrawLines : SDLExampleSceneRender
     {
         public exDrawLines( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -349,6 +422,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Draw Rects
     
+    /// <summary>
+    /// Draws ITTERATIONS random rectangles using SDLRenderer.DrawRect
+    /// </summary>
     public class exDrawRects : SDLExampleSceneRender
     {
         public exDrawRects( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -379,6 +455,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Draw Filled Rects
     
+    /// <summary>
+    /// Draws ITTERATIONS random filled rectangles using SDLRenderer.DrawFilledRect
+    /// </summary>
     public class exDrawFilledRects : SDLExampleSceneRender
     {
         public exDrawFilledRects( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -409,6 +488,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Draw Circles
     
+    /// <summary>
+    /// Draws ITTERATIONS random circles using SDLRenderer.DrawCircle
+    /// </summary>
     public class exDrawCircles : SDLExampleSceneRender
     {
         public exDrawCircles( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -438,6 +520,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Draw Filled Circles
     
+    /// <summary>
+    /// Draws ITTERATIONS random filled circles using SDLRenderer.DrawFilledCircle
+    /// </summary>
     public class exDrawFilledCircles : SDLExampleSceneRender
     {
         public exDrawFilledCircles( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -467,6 +552,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Blit Surfaces
     
+    /// <summary>
+    /// Blits ITTERATIONS random sprites using SDLRenderer.Blit (surface)
+    /// </summary>
     public class exBlitSurfaces : SDLExampleSceneRender
     {
         public exBlitSurfaces( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -482,6 +570,16 @@ public class SDLRendererExampleForm : Form
             
             for( int i = 0; i < ITTERATIONS; i++ )
             {
+                // Adjust color modulation
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                surface.ColorMod = c;
+                
+                // Blit the Surface now
                 rect.x = random.Next( SDL_WINDOW_WIDTH  - sW );
                 rect.y = random.Next( SDL_WINDOW_HEIGHT - sH );
                 renderer.Blit( rect, surface );
@@ -493,6 +591,9 @@ public class SDLRendererExampleForm : Form
     
     #region Example:  Blit Textures
     
+    /// <summary>
+    /// Blits ITTERATIONS random sprites using SDLRenderer.Blit (texture)
+    /// </summary>
     public class exBlitTextures : SDLExampleSceneRender
     {
         public exBlitTextures( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
@@ -508,6 +609,16 @@ public class SDLRendererExampleForm : Form
             
             for( int i = 0; i < ITTERATIONS; i++ )
             {
+                // Adjust color modulation
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                texture.ColorMod = c;
+                
+                // Blit the Texture now
                 rect.x = random.Next( SDL_WINDOW_WIDTH  - tW );
                 rect.y = random.Next( SDL_WINDOW_HEIGHT - tH );
                 renderer.Blit( rect, texture );
@@ -517,10 +628,138 @@ public class SDLRendererExampleForm : Form
     
     #endregion
     
+    #region Example:  Draw Text
+    
+    /// <summary>
+    /// Draws ITTERATIONS random text using SDLRenderer.DrawText
+    /// </summary>
+    public class exDrawText : SDLExampleSceneRender
+    {
+        const string TEXT = "Narf!";
+        
+        public exDrawText( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawText.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            var size = font.TextSize( TEXT );
+            
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                var p = new SDL.SDL_Point(
+                    random.Next( SDL_WINDOW_WIDTH  - size.Width ),
+                    random.Next( SDL_WINDOW_HEIGHT - size.Height )
+                );
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                renderer.DrawText( p, font, TEXT, c );
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Example:  Draw Text 2
+    
+    /// <summary>
+    /// Draws ITTERATIONS random text using SDLRenderer.Blit (texture)
+    /// </summary>
+    public class exDrawText2 : SDLExampleSceneRender
+    {
+        const string TEXT = "Are you pondering what I'm pondering?";
+        
+        SDLRenderer.Texture textTure;
+        Size textSize;
+        
+        public exDrawText2( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
+        
+        public override void DrawScene( SDLRenderer renderer )
+        {
+            // You don't really want to uncomment the next line...
+            // Console.WriteLine( "exDrawText2.DrawScene : Event from SDLRenderer.DrawScene" );
+            
+            for( int i = 0; i < ITTERATIONS; i++ )
+            {
+                var rect = new SDL.SDL_Rect(
+                    random.Next( SDL_WINDOW_WIDTH  - textSize.Width ),
+                    random.Next( SDL_WINDOW_HEIGHT - textSize.Height ),
+                    textSize.Width,
+                    textSize.Height
+                );
+                var c = Color.FromArgb(
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 ),
+                    random.Next( 256 )
+                );
+                textTure.ColorMod = c;
+                renderer.Blit( rect, textTure );
+            }
+        }
+        
+        public override void RendererInit( SDLRenderer render )
+        {
+            CreateAssetsFor( render );
+        }
+        
+        public override void RendererDenit( SDLRenderer render )
+        {
+            ReleaseAssets();
+        }
+        
+        public override void RendererReset( SDLRenderer render )
+        {
+            ReleaseAssets();
+            CreateAssetsFor( render );
+        }
+        
+        void CreateAssetsFor( SDLRenderer renderer )
+        {
+            // Get the size of the message
+            textSize = font.TextSize( TEXT );
+            
+            // Create a Surface for the message
+            var surface = font.TextBlended( TEXT, Color.White );
+            
+            // Turn the surface into a Texture
+            textTure = renderer.CreateTextureFromSurface( surface );
+        }
+        
+        void ReleaseAssets()
+        {
+            if( textTure != null )
+                textTure.Dispose();
+            textTure = null;
+        }
+    }
+    
+    #endregion
+    
     #region Example:  Sample 1
     
+    /// <summary>
+    /// Draws a simple scene composed of static primitives, text and, dynamic sprites
+    /// </summary>
     public class exSample1 : SDLExampleSceneRender
     {
+        
+        const double DEG_TO_RAD = Math.PI / 180.0d;
+        
+        double spinAngle = 0;
+        const double spinStep = 5;
+        const double spinDistance = 32;
+        const int spriteSize = 32;
+        SDL.SDL_Rect spriteRect = new SDL.SDL_Rect( -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize );
+        SDL.SDL_Point spinCentre = new SDL.SDL_Point( SDL_WINDOW_WIDTH / 2, SDL_WINDOW_HEIGHT / 2 );
+        Color surfaceColor = Color.Peru;
+        Color textureColor = Color.Aquamarine;
+            
         public exSample1( Form form, string optIn, string optOut = null ) : base( form, optIn, optOut ) {}
         
         public override void DrawScene( SDLRenderer renderer )
@@ -528,48 +767,144 @@ public class SDLRendererExampleForm : Form
             // You don't really want to uncomment the next line...
             // Console.WriteLine( "exSample1.DrawScene : Event from SDLRenderer.DrawScene" );
             
-            // Draw a blue rect
-            var rect1 = new SDL.SDL_Rect( 32, 32, 64, 64 );
-            var c = Color.FromArgb( 255, 0, 128, 128 );
-            renderer.DrawFilledRect( rect1, c );
+            if( true )
+            {
+                // Draw a couple solid lines over the window
+                var p1 = new SDL.SDL_Point( SDL_WINDOW_WIDTH / 2, 0 );
+                var p2 = new SDL.SDL_Point( SDL_WINDOW_WIDTH / 2, SDL_WINDOW_HEIGHT );
+                var p3 = new SDL.SDL_Point( 0, SDL_WINDOW_HEIGHT / 2 );
+                var p4 = new SDL.SDL_Point( SDL_WINDOW_WIDTH, SDL_WINDOW_HEIGHT / 2 );
+                var c = Color.White;
+                renderer.DrawLine( p1, p2, c );
+                renderer.DrawLine( p3, p4, c );
+            }
             
-            // Draw a translucent red rect
-            var rect2 = new SDL.SDL_Rect( rect1.x + 32, rect1.y + 32, rect1.w, rect1.h );
-            c = Color.FromArgb( 128, 255, 0, 0 );
-            renderer.DrawFilledRect( rect2, c );
-            c = Color.FromArgb( 255, 255, 0, 0 );
-            renderer.DrawRect( rect2, c );
+            if( true )
+            {
+                // Draw a blue rect
+                var rect1 = new SDL.SDL_Rect( 32, 32, 64, 64 );
+                var c = Color.FromArgb( 255, 0, 128, 128 );
+                renderer.DrawFilledRect( rect1, c );
+                
+                // Draw a translucent red rect
+                var rect2 = new SDL.SDL_Rect( rect1.x + 32, rect1.y + 32, rect1.w, rect1.h );
+                c = Color.FromArgb( 128, 255, 0, 0 );
+                renderer.DrawFilledRect( rect2, c );
+                // Outline it
+                c = Color.FromArgb( 255, 255, 0, 0 );
+                renderer.DrawRect( rect2, c );
+                
+                // Draw a couple translucent lines over the rects
+                var p1 = new SDL.SDL_Point( rect1.x, rect1.x );
+                var p2 = new SDL.SDL_Point( p1.x + 64, p1.y + 64 );
+                var p3 = new SDL.SDL_Point( p1.x + 32, p1.y + 64 );
+                var p4 = new SDL.SDL_Point( p1.x + 64, p1.y + 32 );
+                c = Color.FromArgb( 128, 255, 255, 255 );
+                renderer.DrawLine( p1, p2, c );
+                renderer.DrawLine( p3, p4, c );
+            }
             
-            // Draw a couple translucent lines over the rects
-            var p1 = new SDL.SDL_Point( 32, 32 );
-            var p2 = new SDL.SDL_Point( p1.x + 64, p1.y + 64 );
-            var p3 = new SDL.SDL_Point( p1.x + 32, p1.y + 64 );
-            var p4 = new SDL.SDL_Point( p1.x + 64, p1.y + 32 );
-            c = Color.FromArgb( 128, 255, 255, 255 );
-            renderer.DrawLine( p1, p2, c );
-            renderer.DrawLine( p3, p4, c );
+            if( true )
+            {
+                // Draw a yellow circle
+                var p1 = new SDL.SDL_Point( 192, 64 );
+                var c = Color.Yellow;
+                renderer.DrawFilledCircle( p1, 32, c );
+                
+                // Draw a magenta circle
+                var p2 = new SDL.SDL_Point( p1.x + 32, p1.y + 32 );
+                c = Color.FromArgb( 128, 255, 0, 255 );
+                renderer.DrawFilledCircle( p2, 32, c );
+                // Outline it
+                c = Color.FromArgb( 255, 255, 0, 255 );
+                renderer.DrawCircle( p2, 32, c );
+            }
             
-            // Draw a yellow circle
-            var p5 = new SDL.SDL_Point( 192, 64 );
-            c = Color.Yellow;
-            renderer.DrawFilledCircle( p5, 32, c );
+            if( true )
+            {
+                var c = Color.White;
+                
+                // Blit the surface
+                var rect1 = new SDL.SDL_Rect( 32, 192, surface.Width, surface.Height );
+                surface.ColorMod = c;
+                renderer.Blit( rect1, surface );
+                
+                // Blit the texture
+                var rect2 = new SDL.SDL_Rect( rect1.x + surface.Width / 4, rect1.y + surface.Height / 4, rect1.w, rect1.h );
+                texture.ColorMod = c;
+                renderer.Blit( rect2, texture );
+            }
             
-            // Draw a magenta circle
-            var p6 = new SDL.SDL_Point( p5.x + 32, p5.y + 32 );
-            c = Color.FromArgb( 128, 255, 0, 255 );
-            renderer.DrawFilledCircle( p6, 32, c );
-            c = Color.FromArgb( 255, 255, 0, 255 );
-            renderer.DrawCircle( p6, 32, c );
+            if( true )
+            {
+                // Don't do scene control in DrawScene, this is just an example
+                spinAngle += spinStep;
+                if( spinAngle > 360.0 ) spinAngle -= 360.0;
+                
+                // Orbit
+                var c = Color.FromArgb( 255, 64, 64, 64 );
+                renderer.DrawCircle( spinCentre, (int)spinDistance, c );
+                
+                // Blit the surface as a sprite
+                BlitAsSprite( renderer, surface, spinAngle, surfaceColor );
+                
+                // Blit the texture as a sprite
+                BlitAsSprite( renderer, texture, -spinAngle, textureColor );
+            }
             
-            // Blit the surface
-            var rect3 = new SDL.SDL_Rect( 32, 192, surface.Width, surface.Height );
-            renderer.Blit( rect3, surface );
-            
-            // Blit the texture
-            var rect4 = new SDL.SDL_Rect( rect3.x + surface.Width / 4, rect3.y + surface.Height / 4, rect3.w, rect3.h );
-            renderer.Blit( rect4, texture );
-            
+            if( true )
+            {
+                // Draw some text
+                const string text = "They're Pinky and the Brain!";
+                
+                // Solid White Bold
+                var c = Color.White;
+                var p = new SDL.SDL_Point( 32, 384 );
+                renderer.DrawText( p, font, text, c, SDL_ttf.TTF_STYLE_BOLD );
+                
+                // Alpha Red Italic
+                c = Color.FromArgb( 128, 255, 0, 0 );
+                p.y += 16;
+                renderer.DrawText( p, font, text, c, SDL_ttf.TTF_STYLE_ITALIC );
+                
+                // Solid Green Strike-Through
+                c = Color.FromArgb( 255, 0, 255, 0 );
+                p.y += 16;
+                renderer.DrawText( p, font, text, c, SDL_ttf.TTF_STYLE_STRIKETHROUGH );
+                
+                // Alpha Blue Underline
+                c = Color.FromArgb( 128, 0, 0, 255 );
+                p.y += 16;
+                renderer.DrawText( p, font, text, c, SDL_ttf.TTF_STYLE_UNDERLINE );
+                
+            }
         }
+        
+        SDL.SDL_Point RotateAround( double d, double a )
+        {
+            var c = Math.Cos( a * DEG_TO_RAD );
+            var s = Math.Sin( a * DEG_TO_RAD );
+            var rX = d * c;
+            var rY = d * s;
+            return new SDL.SDL_Point( (int)rX, (int)rY );
+        }
+        
+        void BlitAsSprite( SDLRenderer renderer, SDLRenderer.Surface surface, double angle, Color c )
+        {
+            var pos = spinCentre.Add( RotateAround( spinDistance, angle ) );
+            var rect = new SDL.SDL_Rect( spriteRect.x + pos.x, spriteRect.y + pos.y, spriteRect.w, spriteRect.h );
+            surface.ColorMod = c;
+            renderer.Blit( rect, surface );
+        }
+        
+        void BlitAsSprite( SDLRenderer renderer, SDLRenderer.Texture texture, double angle, Color c )
+        {
+            var pos = spinCentre.Add( RotateAround( spinDistance, angle ) );
+            var rect = new SDL.SDL_Rect( spriteRect.x + pos.x, spriteRect.y + pos.y, spriteRect.w, spriteRect.h );
+            texture.ColorMod = c;
+            renderer.Blit( rect, texture );
+        }
+        
     }
     
     #endregion
@@ -588,6 +923,27 @@ public class SDLRendererExampleForm : Form
     {
         var str = string.Format( "EventReporter : Event from SDLRenderer.EventDispatcher: 0x{0}", e.type.ToString( "X" ) );
         Console.WriteLine( str );
+    }
+    
+    #endregion
+    
+    #region RendererReset
+    
+    // NOTE:  This callback will be run in the SDLRenderer thread.
+    //
+    // Access to global resources should use the appropriate safe-guards for a
+    // multi-threaded envirionment.
+    
+    // void SDLRenderer.Client_Delegate_RendererReset( SDLRenderer renderer );
+    void SDLRendererReset( SDLRenderer renderer )
+    {
+        // The underlying SDL_Window and/or SDL_Renderer changed, we need to
+        // recreate our assets
+        ReleaseAssets();
+        CreateAssetsForRenderer( renderer );
+        
+        // Tell all the example scenes to recreate their assets
+        SDLExampleSet.RendererReset( renderer );
     }
     
     #endregion
@@ -709,6 +1065,8 @@ public class SDLRendererExampleForm : Form
         SDLExampleSet.Add( new exDrawFilledCircles( this, "Filled Circles"  ) );
         SDLExampleSet.Add( new exBlitSurfaces(      this, "Surfaces"        ) );
         SDLExampleSet.Add( new exBlitTextures(      this, "Textures"        ) );
+        SDLExampleSet.Add( new exDrawText(          this, "Text"            ) );
+        SDLExampleSet.Add( new exDrawText2(         this, "Text 2"          ) );
         SDLExampleSet.Add( new exSample1(           this, "Sample 1"        ) );
         
         // Add a performance feedback timer
@@ -769,11 +1127,13 @@ public class SDLRendererExampleForm : Form
     
     #region SDL example "scene manager" and "scene base class"
     
-    #region Abstract example "scene base class"
+    #region Example "Scene Base Class"
     
     public abstract class SDLExampleSceneRender
     {
         bool _enabled = false;
+        public bool Enabled { get { return _enabled; } }
+        
         SDLRenderer _renderer;
         public SDLRenderer Renderer
         {
@@ -783,6 +1143,10 @@ public class SDLRendererExampleForm : Form
             }
             set
             {
+                if( value != null )
+                    RendererInit( value );
+                else
+                    RendererDenit( _renderer );
                 _renderer = value;
                 _enabled = false;
             }
@@ -853,6 +1217,10 @@ public class SDLRendererExampleForm : Form
         
         public abstract void DrawScene( SDLRenderer renderer );
         
+        public virtual void RendererInit( SDLRenderer render ) {}
+        public virtual void RendererDenit( SDLRenderer render ) {}
+        public virtual void RendererReset( SDLRenderer render ) {}
+        
     }
     
     #endregion
@@ -862,6 +1230,12 @@ public class SDLRendererExampleForm : Form
     public static class SDLExampleSet
     {
         static List<SDLExampleSceneRender> _examples = new List<SDLExampleSceneRender>();
+        
+        public static void RendererReset( SDLRenderer renderer )
+        {
+            foreach( var example in _examples )
+                if( example.Enabled ) example.RendererReset( renderer );
+        }
         
         public static void UpdateRenderer( SDLRenderer renderer )
         {

@@ -13,6 +13,10 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 
+using Color = System.Drawing.Color;
+using Point = System.Drawing.Point;
+using Rectangle = System.Drawing.Rectangle;
+using Size = System.Drawing.Size;
 using SDL2;
 
 namespace SDL2ThinLayer
@@ -473,6 +477,10 @@ namespace SDL2ThinLayer
                 // Set the old state values
                 this.BlendMode = obm;
                 this.ShowCursor = osc;
+                
+                // Call any RendererReset handlers
+                if( RendererReset != null )
+                    RendererReset( this );
             }
             
             return ret;

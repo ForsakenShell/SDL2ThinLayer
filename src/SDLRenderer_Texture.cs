@@ -13,6 +13,9 @@
 using System;
 
 using Color = System.Drawing.Color;
+using Point = System.Drawing.Point;
+using Rectangle = System.Drawing.Rectangle;
+using Size = System.Drawing.Size;
 using SDL2;
 
 namespace SDL2ThinLayer
@@ -40,13 +43,9 @@ namespace SDL2ThinLayer
         public class Texture
         {
             
-            #region Semi-Public API:  The underlying SDL_Texture.
-            
-            public IntPtr SDLTexture;
-            
-            #endregion
-            
             #region Internal API:  Surface control objects
+            
+            internal IntPtr _sdlTexture;
             
             SDLRenderer _renderer;
             
@@ -59,15 +58,27 @@ namespace SDL2ThinLayer
             uint _Bmask;
             uint _Amask;
             
+            SDL.SDL_BlendMode _blendMode;
+            byte _alphaMod;
+            Color _colorMod;
+            
             #endregion
             
-            #region Public API:  The SDLRenderer associated with this Texture.
+            #region Public API:  The SDL objects associated with this Texture.
             
             public SDLRenderer Renderer
             {
                 get
                 {
                     return _renderer;
+                }
+            }
+            
+            public IntPtr SDLTexture
+            {
+                get
+                {
+                    return _sdlTexture;
                 }
             }
             
@@ -92,9 +103,9 @@ namespace SDL2ThinLayer
             {
                 if( _disposed ) return;
                 
-                if( SDLTexture != IntPtr.Zero )
-                    SDL.SDL_DestroyTexture( SDLTexture );
-                SDLTexture = IntPtr.Zero;
+                if( _sdlTexture != IntPtr.Zero )
+                    SDL.SDL_DestroyTexture( _sdlTexture );
+                _sdlTexture = IntPtr.Zero;
                 _renderer = null;
                 
                 _disposed = true;
@@ -120,6 +131,17 @@ namespace SDL2ThinLayer
                     out _Amask ) == SDL.SDL_bool.SDL_FALSE )
                     return false;
                 
+                if( SDL.SDL_GetTextureBlendMode( _sdlTexture, out _blendMode ) != 0 )
+                    return false;
+                
+                if( SDL.SDL_GetTextureAlphaMod( _sdlTexture, out _alphaMod ) != 0 )
+                    return false;
+                
+                byte r, g, b;
+                if( SDL.SDL_GetTextureColorMod( _sdlTexture, out r, out g, out b ) != 0 )
+                    return false;
+                _colorMod = Color.FromArgb( r, g, b );
+                
                 return true;
             }
             
@@ -132,7 +154,12 @@ namespace SDL2ThinLayer
                 texture._renderer = surface.Renderer;
                 
                 // Create from the surface
-                texture.SDLTexture = SDL.SDL_CreateTextureFromSurface( texture.Renderer.Renderer, surface.SDLSurface );
+                texture._sdlTexture = SDL.SDL_CreateTextureFromSurface( texture.Renderer.Renderer, surface.SDLSurface );
+                if( texture._sdlTexture == IntPtr.Zero )
+                {
+                    texture.Dispose();
+                    return null;
+                }
                 
                 // Fetch the Texture formatting information
                 if( !texture.FillOutInfo( surface ) )
@@ -161,12 +188,12 @@ namespace SDL2ThinLayer
             {
                 get
                 {
-                    SDL.SDL_BlendMode mode;
-                    return SDL.SDL_GetTextureBlendMode( SDLTexture, out mode ) != 0 ? SDL.SDL_BlendMode.SDL_BLENDMODE_INVALID : mode;
+                    return _blendMode;
                 }
                 set
                 {
-                    SDL.SDL_SetTextureBlendMode( SDLTexture, value );
+                    _blendMode = value;
+                    SDL.SDL_SetTextureBlendMode( _sdlTexture, value );
                 }
             }
             
@@ -177,12 +204,12 @@ namespace SDL2ThinLayer
             {
                 get
                 {
-                    byte alpha;
-                    return SDL.SDL_GetTextureAlphaMod( SDLTexture, out alpha ) != 0 ? (byte)0 : alpha;
+                    return _alphaMod;
                 }
                 set
                 {
-                    SDL.SDL_SetTextureAlphaMod( SDLTexture, value );
+                    _alphaMod = value;
+                    SDL.SDL_SetTextureAlphaMod( _sdlTexture, value );
                 }
             }
             
@@ -193,12 +220,12 @@ namespace SDL2ThinLayer
             {
                 get
                 {
-                    byte r, g, b;
-                    return SDL.SDL_GetTextureColorMod( SDLTexture, out r, out g, out b ) != 0 ? Color.Black : Color.FromArgb( r, g, b );
+                    return _colorMod;
                 }
                 set
                 {
-                    SDL.SDL_SetTextureColorMod( SDLTexture, value.R, value.G, value.B );
+                    _colorMod = value;
+                    SDL.SDL_SetTextureColorMod( _sdlTexture, value.R, value.G, value.B );
                 }
             }
             
