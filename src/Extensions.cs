@@ -1,7 +1,7 @@
 ﻿/*
- * SDLExtensions.cs
+ * Extensions.cs
  *
- * Useful extensions to SDL structs and classes.
+ * Useful extensions to structs and classes.
  *
  * User: 1000101
  * Date: 01/02/2018
@@ -9,6 +9,8 @@
  * 
  */
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
 using Color = System.Drawing.Color;
 using Point = System.Drawing.Point;
@@ -18,7 +20,7 @@ using SDL2;
 
 namespace SDL2ThinLayer
 {
-    public static class SDLExtensions
+    public static class Extensions
     {
         
         #region SDL_Point Extensions
@@ -270,6 +272,21 @@ namespace SDL2ThinLayer
         }
         
         #endregion
+        
+        #endregion
+        
+        #region List Extensions
+        
+        /// <summary>
+        /// Is the list null or contain 0 elements?
+        /// </summary>
+        /// <param name="list">List to test for null or empty</param>
+        /// <returns></returns>
+        public static bool NullOrEmpty<T>( this IList<T> list )
+        {
+            if( list == null ) return true;
+            return list.Count == 0;
+        }
         
         #endregion
         

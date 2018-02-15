@@ -341,7 +341,7 @@ namespace SDL2ThinLayer
                     INTERNAL_SDLThread_SaveWindowToFile();
                 
                 // Handle any invokes that have been queued
-                if( ( !_exitRequested )&&( _invokeQueue.Count > 0 ) )
+                if( ( !_exitRequested )&&( !_invokeQueue.NullOrEmpty() ) )
                     INTERNAL_SDLThread_InvokeQueue_Dispatcher();
                 
                 // Window needs to be recreated, do that before anything else

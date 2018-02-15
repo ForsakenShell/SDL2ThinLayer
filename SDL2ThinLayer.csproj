@@ -64,7 +64,7 @@
     <Compile Include="src\SDL2-CS\SDL2_image.cs" />
     <Compile Include="src\SDL2-CS\SDL2_mixer.cs" />
     <Compile Include="src\SDL2-CS\SDL2_ttf.cs" />
-    <Compile Include="src\SDLExtensions.cs" />
+    <Compile Include="src\Extensions.cs" />
     <Compile Include="src\SDLRenderer.cs" />
     <Compile Include="src\SDLRenderer_Blitters.cs" />
     <Compile Include="src\SDLRenderer_FileTypes.cs" />
