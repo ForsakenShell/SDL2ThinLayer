@@ -77,7 +77,7 @@ namespace SDL2ThinLayer
             int windowWidth,
             int windowHeight,
             string windowTitle,
-            Client_Delegate_WindowClosed windowClosed,
+            void_RendererOnly windowClosed,
             int drawsPerSecond = DEFAULT_DRAWS_PER_SECOND,
             int eventsPerSecond = DEFAULT_EVENTS_PER_SECOND,
             bool fastRender = true,
@@ -108,6 +108,14 @@ namespace SDL2ThinLayer
         protected virtual void Dispose( bool disposing )
         {
             if( _disposed ) return;
+            
+            // Empty the invoke queue, anything that hasn't been
+            // processed at this point will never be processed.
+            if( _invokeQueue != null )
+            {
+                _invokeQueue.Clear();
+                _invokeQueue = null;
+            }
             
             // Destroy the SDL_Window
             DestroyWindow();

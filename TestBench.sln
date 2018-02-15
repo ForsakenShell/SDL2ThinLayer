@@ -1,0 +1,24 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+# SharpDevelop 5.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestBench", "TestBench.csproj", "{B77ED2AD-2691-4B0C-A9DD-3814676409CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SDL2ThinLayer", "SDL2ThinLayer.csproj", "{A2D3C656-1C64-4530-A8CD-E2B20F8CB641}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B77ED2AD-2691-4B0C-A9DD-3814676409CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B77ED2AD-2691-4B0C-A9DD-3814676409CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B77ED2AD-2691-4B0C-A9DD-3814676409CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B77ED2AD-2691-4B0C-A9DD-3814676409CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2D3C656-1C64-4530-A8CD-E2B20F8CB641}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2D3C656-1C64-4530-A8CD-E2B20F8CB641}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2D3C656-1C64-4530-A8CD-E2B20F8CB641}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2D3C656-1C64-4530-A8CD-E2B20F8CB641}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

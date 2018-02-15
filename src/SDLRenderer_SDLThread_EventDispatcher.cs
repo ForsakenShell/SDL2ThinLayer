@@ -29,43 +29,44 @@ namespace SDL2ThinLayer
         
         #region Public API:  Client Delegate Prototypes
         
-        public delegate void Client_Delegate_Invoke( SDLRenderer renderer );
-        public delegate void Client_Delegate_DrawScene( SDLRenderer renderer );
-        public delegate void Client_Delegate_SDL_Event( SDLRenderer renderer, SDL.SDL_Event e );
-        public delegate void Client_Delegate_RendererReset( SDLRenderer renderer );
-        public delegate void Client_Delegate_WindowClosed( SDLRenderer renderer );
+        public delegate void void_RendererOnly( SDLRenderer renderer );
+        public delegate void void_RendererAndEvent( SDLRenderer renderer, SDL.SDL_Event e );
         
         #endregion
         
         #region Public API:  Client Callbacks
         
         // Actually used in INTERNAL_SDLThread_RenderScene() (see SDLRenderer_SDLThread.cs)
-        public Client_Delegate_DrawScene DrawScene;
+        public void_RendererOnly DrawScene;
         
         // SDL_Events the client can handle, these will be called in the SDLRenderer
         // thread and the client should handle it's own mechanisms for data protection.
-        public Client_Delegate_SDL_Event KeyDown;
-        public Client_Delegate_SDL_Event KeyUp;
-        public Client_Delegate_SDL_Event MouseButtonDown;
-        public Client_Delegate_SDL_Event MouseButtonUp;
-        public Client_Delegate_SDL_Event MouseMove;
-        public Client_Delegate_SDL_Event MouseWheel;
+        public void_RendererAndEvent KeyDown;
+        public void_RendererAndEvent KeyUp;
+        public void_RendererAndEvent MouseButtonDown;
+        public void_RendererAndEvent MouseButtonUp;
+        public void_RendererAndEvent MouseMove;
+        public void_RendererAndEvent MouseWheel;
+        public void_RendererAndEvent MouseEnter;
+        public void_RendererAndEvent MouseExit;
+        public void_RendererAndEvent WindowResized;
+        public void_RendererAndEvent WindowSizeChanged;
         
         // The RendererReset event can happen at any time and executes in the SDLThread.  This event occurs
         // whenever the SDL_Window and/or SDL_Render are "reset" in any way.  Resources that are linked to
         // the SDLRenderer (SDLRenderer.Texture, etc) should be recreated on this event.  The event itself
         // occurs after the SDL_Window and/or SDL_Render are recreated (as applicable).
-        public Client_Delegate_RendererReset RendererReset;
+        public void_RendererOnly RendererReset;
         
         // For a stand-alone SDL_Window, we need an event handler for it to signal back that the user closed it.
         // Client code cannot explicitly [un]subscribe to this, the handler must be passed to the constructor.
-        Client_Delegate_WindowClosed WindowClosed;
+        void_RendererOnly WindowClosed;
         
         #endregion
         
         #region Internal:  SDLRender Thread Event Dispatcher
         
-        void INTERNAL_SDLThread_EventDispatcher()  
+        void INTERNAL_SDLThread_EventDispatcher()
         {
             #if DEBUG
             if( !IsReady ) return;
@@ -148,20 +149,53 @@ namespace SDL2ThinLayer
                                 // Nothing else matters after a window close event, just return
                                 return;
                             }
+                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED:
+                            {
+                                // Call user WindowSizeChanged handler
+                                if( WindowSizeChanged != null )
+                                    WindowSizeChanged( this, sdlEvent );
+                                
+                                // Update the internal window size
+                                _windowSize = new Size( sdlEvent.window.data1, sdlEvent.window.data2 );
+                                if( _anchored )
+                                    _windowResetRequired = true;  // This will auto-trigger a renderer reset
+                                else
+                                    _rendererResetRequired = true;
+                                //SDL.SDL_RenderPresent( _sdlRenderer );
+                                break;
+                            }
+                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED:
+                            {
+                                // Call user WindowResized handler
+                                if( WindowResized != null )
+                                    WindowResized( this, sdlEvent );
+                                break;
+                            }
+                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_EXPOSED:
+                            {
+                                // Window has been brought to the front
+                                SDL.SDL_RenderPresent( _sdlRenderer );
+                                break;
+                            }
+                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_ENTER:
+                            {
+                                // Call user MouseEnter handler
+                                if( MouseEnter != null )
+                                    MouseEnter( this, sdlEvent );
+                                break;
+                            }
+                            case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_LEAVE:
+                            {
+                                // Call user MouseExit handler
+                                if( MouseExit != null )
+                                    MouseExit( this, sdlEvent );
+                                break;
+                            }
                         }
                         break;
                     }
                     default:
                     {
-                        // User event?
-                        if(
-                            ( sdlEvent.type == (SDL.SDL_EventType)_sdlUEID_Invoke_NoParams )||
-                            ( sdlEvent.type == (SDL.SDL_EventType)_sdlUEID_BeginInvoke_NoParams )
-                        )
-                        {
-                            // Begin/Invoke Delegate
-                            INTERNAL_SDLThread_InvokeEvent( sdlEvent );
-                        }
                         break;
                     }
                 }

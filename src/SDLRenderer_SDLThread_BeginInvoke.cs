@@ -7,7 +7,7 @@
  * mechanism, you can use SDLRenderer.BeginInvoke() or SDLRenderer.Invoke() to run the code
  * in the SDL thread.
  * 
- * NOTE:  These delegates will not execute immediately, they are handled via the event queue
+ * NOTE:  These delegates will not execute immediately, they are handled via an invoke queue
  * in the SDL thread and should not be used for time critical code.
  * 
  * User: 1000101
@@ -15,6 +15,7 @@
  * Time: 11:59 AM
  */
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Runtime.InteropServices;
 
@@ -29,18 +30,11 @@ namespace SDL2ThinLayer
     public partial class SDLRenderer
     {
         
-        #region Internal:  Custom SDL User Event IDs
+        #region Internal:  Begin/Invoke queue
         
-        uint _sdlUEID_Invoke_NoParams;
-        uint _sdlUEID_BeginInvoke_NoParams;
-        
-        #endregion
-        
-        #region Internal:  Begin/Invoke structs passed as SDL_Event.user.data1
-        
-        struct UEInfo_Invoke_NoParams
+        class Invoke_RendererOnly : IDisposable
         {
-            public Client_Delegate_Invoke del;
+            public void_RendererOnly cbInvoke;
             
             // Used by Invoke()
             public SemaphoreSlim sync;
@@ -52,43 +46,89 @@ namespace SDL2ThinLayer
                     return sync != null;
                 }
             }
+            
+            // Protect against "double-free" errors caused by combinations of explicit disposal[s] and GC disposal
+            bool _disposed = false;
+            
+            ~Invoke_RendererOnly()
+            {
+                Dispose( false );
+            }
+            
+            public void Dispose()
+            {
+                Dispose( true );
+                GC.SuppressFinalize( this );
+            }
+            
+            protected virtual void Dispose( bool disposing )
+            {
+                if( _disposed ) return;
+                
+                if( sync != null )
+                    sync.Dispose();
+                
+                sync = null;
+                cbInvoke = null;
+                
+                // This is no longer a valid state
+                _disposed = true;
+            }
+            
         }
+        
+        List<Invoke_RendererOnly>   _invokeQueue;
         
         #endregion
         
         #region Public API:  Invoke() and BeginInvoke()
         
-        public void Invoke( Client_Delegate_Invoke del )
+        public void Invoke( void_RendererOnly del )
         {
-            INTERNAL_SDLThread_PushInvokeEvent( del, _sdlUEID_Invoke_NoParams );
+            INTERNAL_SDLThread_InvokeQueue_PrepareInvoke( del, false );
         }
         
-        public void BeginInvoke( Client_Delegate_Invoke del )
+        public void BeginInvoke( void_RendererOnly del )
         {
-            INTERNAL_SDLThread_PushInvokeEvent( del, _sdlUEID_BeginInvoke_NoParams );
+            INTERNAL_SDLThread_InvokeQueue_PrepareInvoke( del, true );
         }
         
         #endregion
         
         #region Internal:  SDLRenderer Thread Begin/Invoke
         
-        #region Push Event
+        #region Queue Management
         
-        void INTERNAL_SDLThread_PushInvokeEvent( Client_Delegate_Invoke del, uint userType )
+        void INTERNAL_SDLThread_InvokeQueue_Add( Invoke_RendererOnly ueInfo )
         {
-            // Invoke will cause a user event in the SDL thread.  Normal Invoke/BeginInvoke
+            var c = _invokeQueue.Count;
+            _invokeQueue.Insert( c, ueInfo );
+        }
+        
+        Invoke_RendererOnly INTERNAL_SDLThread_InvokeQueue_FetchNext()
+        {
+            if( _invokeQueue.Count < 1 ) return null;
+            var ueInfo = _invokeQueue[ 0 ];
+            _invokeQueue.RemoveAt( 0 );
+            return ueInfo;
+        }
+        
+        #endregion
+        
+        #region Add new invoke bucket to queue
+        
+        void INTERNAL_SDLThread_InvokeQueue_PrepareInvoke( void_RendererOnly del, bool asyncBegin )
+        {
+            // Invoke will cause a queued event in the SDL thread.  Normal Invoke/BeginInvoke
             // cannot be used as the main loop for the SDL thread is always running.
-            // Due to this being handled through the event system the call can be delayed.
-            
-            var sdlEvent = new SDL.SDL_Event();
-            sdlEvent.type = (SDL.SDL_EventType)userType;
+            // Due to this being handled through a queue system the call can be delayed.
             
             // Begin/Invoke struct
-            var ueInfo = new UEInfo_Invoke_NoParams();
-            ueInfo.del = del;
+            var ueInfo = new Invoke_RendererOnly();
+            ueInfo.cbInvoke = del;
             ueInfo.sync = null;
             
-            if( userType == _sdlUEID_Invoke_NoParams )
+            if( !asyncBegin )
             {
                 // Create a semaphore with 1 slot and 0 available to handle Invoke()
                 // This way we already hold the lone semaphore slot before we push
@@ -97,66 +137,32 @@ namespace SDL2ThinLayer
                 ueInfo.sync = new SemaphoreSlim( 0, 1 );
             }
             
-            // Marshal it for SDL
-            sdlEvent.user.data1 = INTERNAL_SDLThread_InvokeStructToPtr( ueInfo );
-            
-            // Now send the Begin/Invoke event to SDL
-            if( SDL.SDL_PushEvent( ref sdlEvent ) != 1 )
-                throw new Exception( "INTERNAL_SDLThread_PushInvokeEvent : SDL_PushEvent() failed!" );
+            // Add this event to the queue
+            INTERNAL_SDLThread_InvokeQueue_Add( ueInfo );
             
             // Was this an Invoke?
-            if( userType == _sdlUEID_Invoke_NoParams )
+            if( !asyncBegin )
             {
                 // Wait for the SDL thread to handle the Invoke()
                 ueInfo.sync.Wait();
                 ueInfo.sync.Release();
                 
-                // Dispose of the semaphore
-                ueInfo.sync.Dispose();
-                ueInfo.sync = null;
-                
                 // We need to free the unmanaged resources here
-                INTERNAL_SDLThread_FreeInvokeStructPtr( ref sdlEvent.user.data1 );
-                
+                ueInfo.Dispose();
+                ueInfo = null;
             }
             
         }
         
         #endregion
         
-        #region Invoke Struct Marshalling
-        
-        UEInfo_Invoke_NoParams INTERNAL_SDLThread_PtrToInvokeStruct( IntPtr ueStruct )
-        {
-            return (UEInfo_Invoke_NoParams)Marshal.PtrToStructure( ueStruct, typeof( UEInfo_Invoke_NoParams ) );
-        }
-        
-        IntPtr INTERNAL_SDLThread_InvokeStructToPtr( UEInfo_Invoke_NoParams ueInfo )
-        {
-            var ptr = Marshal.AllocHGlobal( Marshal.SizeOf( ueInfo ) );
-            Marshal.StructureToPtr( ueInfo, ptr, false );
-            return ptr;
-        }
-        
-        void INTERNAL_SDLThread_FreeInvokeStructPtr( ref IntPtr ueStruct )
-        {
-            Marshal.DestroyStructure( ueStruct, typeof( UEInfo_Invoke_NoParams ) );
-            Marshal.FreeHGlobal( ueStruct );
-            ueStruct = IntPtr.Zero;
-        }
-        
-        #endregion
-        
         #region Begin/Invoke Delegate Callback
         
-        void INTERNAL_SDLThread_InvokeEvent( SDL.SDL_Event sdlEvent )
+        void INTERNAL_SDLThread_InvokeQueue_HandleInvoke( Invoke_RendererOnly ueInfo )
         {
-            // Get the struct from the pointer
-            var ueInfo = INTERNAL_SDLThread_PtrToInvokeStruct( sdlEvent.user.data1 );
-            
             // Invoke the delegate
-            if( ueInfo.del != null )
-                ueInfo.del( this );
+            if( ueInfo.cbInvoke != null )
+                ueInfo.cbInvoke( this );
             
             if( ueInfo.IsBlocking )
             {
@@ -167,8 +173,31 @@ namespace SDL2ThinLayer
             else
             {
                 // BeginInvoke() means we need to free the unmanaged resources
-                INTERNAL_SDLThread_FreeInvokeStructPtr( ref sdlEvent.user.data1 );
+                ueInfo.Dispose();
+                ueInfo = null;
             }
+        }
+        
+        void INTERNAL_SDLThread_InvokeQueue_Dispatcher()
+        {
+            //Console.Write( "INTERNAL_SDLThread_InvokeQueue_Dispatcher()" );
+            
+            #if DEBUG
+            if( !IsReady ) return;
+            #endif
+            
+            
+            //Console.Write( "INTERNAL_SDLThread_InvokeQueue_Dispatcher() :: Loop_Enter\n" );
+            while( _invokeQueue.Count > 0 )
+            {
+                var ueInfo = INTERNAL_SDLThread_InvokeQueue_FetchNext();
+                if( ueInfo != null )
+                {
+                    Console.Write( "INTERNAL_SDLThread_InvokeQueue_Dispatcher() :: Invoke Delegate\n" );
+                    INTERNAL_SDLThread_InvokeQueue_HandleInvoke( ueInfo );
+                }
+            }
+            //Console.Write( "INTERNAL_SDLThread_InvokeQueue_Dispatcher() :: Loop_Exit\n" );
         }
         
         #endregion

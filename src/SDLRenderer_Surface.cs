@@ -69,6 +69,11 @@ namespace SDL2ThinLayer
             uint _Bmask;
             uint _Amask;
             
+            bool _mustLock;
+            
+            int _pitch;
+            unsafe void* _pixels;
+            
             SDL.SDL_BlendMode _blendMode;
             byte _alphaMod;
             Color _colorMod;
@@ -175,6 +180,8 @@ namespace SDL2ThinLayer
                     // Get the size of the SDL_Surface
                     _Width = _sdlSurfacePtr->w;
                     _Height = _sdlSurfacePtr->h;
+                    _pitch = _sdlSurfacePtr->pitch;
+                    _pixels = _sdlSurfacePtr->pixels.ToPointer();
                 }
                 
                 // And now it's bits per pixel and channel masks
@@ -197,6 +204,8 @@ namespace SDL2ThinLayer
                 if( SDL.SDL_GetSurfaceColorMod( _sdlSurface, out r, out g, out b ) != 0 )
                     return false;
                 _colorMod = Color.FromArgb( r, g, b );
+                
+                _mustLock = SDL.SDL_MUSTLOCK( _sdlSurface );
                 
                 return true;
             }
@@ -248,6 +257,22 @@ namespace SDL2ThinLayer
                 }
                 
                 return surface;
+            }
+            
+            #endregion
+            
+            #region Public API:  Surface Locking
+            
+            public bool MustLock { get { return _mustLock; } }
+            
+            public bool Lock()
+            {
+                return SDL.SDL_LockSurface( _sdlSurface ) == 0;
+            }
+            
+            public void Unlock()
+            {
+                SDL.SDL_UnlockSurface( _sdlSurface );
             }
             
             #endregion
@@ -349,6 +374,28 @@ namespace SDL2ThinLayer
                 get
                 {
                     return _Height;
+                }
+            }
+            
+            /// <summary>
+            /// The Pitch of the pixel buffer.
+            /// </summary>
+            public int Pitch
+            {
+                get
+                {
+                    return _pitch;
+                }
+            }
+            
+            /// <summary>
+            /// A void* pointer to the raw pixel buffer.
+            /// </summary>
+            unsafe public void* Pixels
+            {
+                get
+                {
+                    return _pixels;
                 }
             }
             

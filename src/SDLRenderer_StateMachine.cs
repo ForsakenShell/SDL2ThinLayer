@@ -49,6 +49,7 @@ namespace SDL2ThinLayer
         #region Internal:  SDL control objects
         
         IntPtr _sdlWindow;
+        IntPtr _sdlWindowHandle;
         uint _sdlWindow_PixelFormat;
         int _sdlWindow_bpp;
         uint _sdlWindow_Rmask;
@@ -94,6 +95,17 @@ namespace SDL2ThinLayer
         }
         
         /// <summary>
+        /// The hWnd of the SDL_Window associated with this renderer.
+        /// </summary>
+        public IntPtr WindowHandle
+        {
+            get
+            {
+                return _sdlWindowHandle;
+            }
+        }
+        
+        /// <summary>
         /// The SDL_Renderer associated with this renderer.
         /// </summary>
         public IntPtr Renderer
@@ -127,24 +139,24 @@ namespace SDL2ThinLayer
         }
         
         /// <summary>
-        /// The width of the SDL_Window.
+        /// The size of the SDL_Window
         /// </summary>
-        public int Width
+        public Size WindowSize
         {
             get
             {
-                return _windowSize.Width;
+                return _windowSize;
             }
-        }
-        
-        /// <summary>
-        /// The Height of the SDL_Window.
-        /// </summary>
-        public int Height
-        {
-            get
+            set
             {
-                return _windowSize.Height;
+                // Update the window size
+                _windowSize = value;
+                if( !_anchored )
+                {
+                    SDL.SDL_SetWindowSize( _sdlWindow, _windowSize.Width, _windowSize.Height );
+                }
+                _windowResetRequired = true;
+                _rendererResetRequired = true;
             }
         }
         
@@ -197,6 +209,17 @@ namespace SDL2ThinLayer
         #region Public API:  State Machine States
         
         /// <summary>
+        /// Is this instance anchored to another control or a free standing window?
+        /// </summary>
+        public bool Anchored
+        {
+            get
+            {
+                return _anchored;
+            }
+        }
+        
+        /// <summary>
         /// Is this instance of SDLRenderer ready for use?
         /// </summary>
         public bool IsReady
@@ -207,7 +230,8 @@ namespace SDL2ThinLayer
                     _sdlInitialized &&
                     INTERNAL_SDLThread_Running &&
                     !_exitRequested &&
-                    !_windowResetRequired;
+                    !_windowResetRequired &&
+                    !_rendererResetRequired;
             }
         }
         
@@ -286,7 +310,7 @@ namespace SDL2ThinLayer
             int windowWidth,
             int windowHeight,
             string windowTitle,
-            Client_Delegate_WindowClosed windowClosed,
+            void_RendererOnly windowClosed,
             int drawsPerSecond,
             int eventsPerSecond,
             bool fastRender,
@@ -314,11 +338,15 @@ namespace SDL2ThinLayer
             _windowTitle = windowTitle;
             WindowClosed = windowClosed;
             
+            // Create an empty invoke queue
+            _invokeQueue = new List<Invoke_RendererOnly>();
+            
             // Clear SDLThread controls
             _threadState = SDLThreadState.Inactive;
             _exitRequested = false;
             _pauseThread = false;
-            _windowResetRequired = false;
+            _rendererResetRequired = false;
+            _rendererResetRequired = false;
             _windowSaveRequested = false;
             
             // Clear SDLThread Performance Feedback variables
@@ -326,7 +354,7 @@ namespace SDL2ThinLayer
             _potentialFPS = 0;
             _averageFrameTime = 0;
             
-            // Set initial API state
+            // Set initial render API state
             _clearColor = Color.FromArgb( 0 );
             _showCursor = showCursorOverControl;
             _fastRender = fastRender;

@@ -246,8 +246,8 @@ public class SDLRendererExampleForm : Form
         Console.WriteLine(
             string.Format(
                 "SDLRenderer:\n\tResolution = {0}x{1} {2}bpp\n\tPixelFormat = 0x{3}\n\tAlpha Mask = 0x{4}\n\tRed Mask   = 0x{5}\n\tGreen Mask = 0x{6}\n\tBlue Mask  = 0x{7}",
-                renderer.Width,
-                renderer.Height,
+                renderer.WindowSize.Width,
+                renderer.WindowSize.Height,
                 renderer.BitsPerPixel,
                 renderer.PixelFormat.ToString( "X" ),
                 renderer.AlphaMask.ToString( "X" ),
